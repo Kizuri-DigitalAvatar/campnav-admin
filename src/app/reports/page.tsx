@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { api } from "../../../../campnav-client/convex/_generated/api"
+import { api } from "@convex/_generated/api"
 import { MessageSquare, AlertTriangle, CheckCircle, Info, Filter, Search } from "lucide-react"
 
 export default function ReportsPage() {

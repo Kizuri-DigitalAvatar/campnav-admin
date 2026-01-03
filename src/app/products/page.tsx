@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { api } from "../../../../campnav-client/convex/_generated/api"
+import { api } from "@convex/_generated/api"
 import { Package, Plus, Search, Filter, Trash2, Upload, X, Tag, DollarSign, Box } from "lucide-react"
 
 export default function ProductsPage() {

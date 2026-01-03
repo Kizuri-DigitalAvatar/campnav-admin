@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from "recharts"
-import { api } from "../../../campnav-client/convex/_generated/api"
+import { api } from "@convex/_generated/api"
 
 const COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#10b981', '#f59e0b'];
 

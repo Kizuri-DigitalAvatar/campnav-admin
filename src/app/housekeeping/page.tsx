@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { api } from "../../../../campnav-client/convex/_generated/api"
+import { api } from "@convex/_generated/api"
 import { Trash2, ClipboardList, Bed, Wrench, Eraser } from "lucide-react"
 
 export default function HousekeepingPage() {

@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { api } from "../../../../campnav-client/convex/_generated/api"
+import { api } from "@convex/_generated/api"
 
 import { Upload, X, Trash2, Search, Filter, UserCog } from "lucide-react"
 

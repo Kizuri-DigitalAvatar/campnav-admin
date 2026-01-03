@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { api } from "../../../../campnav-client/convex/_generated/api"
+import { api } from "@convex/_generated/api"
 import { Search, Filter, Trash2, ShoppingBag } from "lucide-react"
 
 const STATUSES = ["pending", "in_progress", "completed"] as const
