@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
 import {
     LayoutDashboard,
@@ -18,6 +19,7 @@ import {
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const pathname = usePathname();
 
     const navItems = [
         { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -32,15 +34,22 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         { name: 'Rooms', href: '/rooms', icon: Home },
     ];
 
+    const isActive = (href: string) => {
+        if (href === '/') {
+            return pathname === '/';
+        }
+        return pathname.startsWith(href);
+    };
+
     return (
         <div className="flex min-h-screen bg-transparent">
             {/* Mobile Header */}
             <div className="md:hidden fixed top-0 left-0 right-0 h-16 glass-card border-b border-white/10 flex items-center justify-between px-4 z-30">
                 <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-600 to-emerald-700 flex items-center justify-center shadow-lg shadow-teal-500/20">
                         <LayoutDashboard size={18} className="text-white" />
                     </div>
-                    <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-100 to-indigo-100">
+                    <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-200 to-emerald-200">
                         CAMPNAV Admin
                     </h1>
                 </div>
@@ -64,10 +73,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             <aside className={`fixed inset-y-0 left-0 w-64 glass-card rounded-none border-y-0 border-l-0 border-r-white/10 flex flex-col p-6 z-50 transition-transform duration-300 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
                 } md:translate-x-0 md:z-20`}>
                 <div className="mb-10 flex items-center space-x-3 px-2 mt-16 md:mt-0">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 hidden md:flex">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-600 to-emerald-700 flex items-center justify-center shadow-lg shadow-teal-500/20 hidden md:flex">
                         <LayoutDashboard size={18} className="text-white" />
                     </div>
-                    <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-100 to-indigo-100 hidden md:block">
+                    <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-200 to-emerald-200 hidden md:block">
                         CAMPNAV Admin
                     </h1>
                 </div>
@@ -78,7 +87,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                             key={item.name}
                             href={item.href}
                             onClick={() => setMobileMenuOpen(false)}
-                            className="flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium text-blue-200/60 hover:text-white hover:bg-white/10 transition-all group"
+                            className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group ${isActive(item.href)
+                                    ? 'bg-teal-500/20 text-white border border-teal-500/30'
+                                    : 'text-teal-200/60 hover:text-white hover:bg-teal-500/10'
+                                }`}
                         >
                             <item.icon size={18} className="group-hover:scale-110 transition-transform" />
                             <span>{item.name}</span>
@@ -89,8 +101,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 </nav>
 
                 <div className="mt-auto pt-6 border-t border-white/10">
-                    <div className="glass-card p-4 rounded-xl bg-indigo-500/5">
-                        <div className="text-[10px] uppercase font-bold text-indigo-400 mb-1">System Status</div>
+                    <div className="glass-card p-4 rounded-xl bg-teal-500/5">
+                        <div className="text-[10px] uppercase font-bold text-teal-400 mb-1">System Status</div>
                         <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-xs text-white/60">Deployment Active</span>
