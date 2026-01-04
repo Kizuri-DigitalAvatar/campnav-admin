@@ -16,21 +16,21 @@
 @layer utilities {
   .glass {
     @apply backdrop-blur-[12px] bg-white/10 border border-white/20;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    box-shadow: 0 8px 32px 0 rgba(74, 124, 126, 0.37);
   }
 
   .glass-card {
     @apply backdrop-blur-[12px] bg-white/10 border border-white/20 rounded-xl transition-all duration-300 hover:-translate-y-1;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    box-shadow: 0 8px 32px 0 rgba(74, 124, 126, 0.37);
   }
 
   .glass-card:hover {
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.47);
+    box-shadow: 0 8px 32px 0 rgba(74, 124, 126, 0.47);
   }
 
   .glass-input {
     @apply backdrop-blur-[12px] bg-white/10 border border-white/20 rounded-lg px-3 py-2 outline-none focus:border-white/40 transition-colors placeholder:text-white/50 bg-black/20 border-white/10;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    box-shadow: 0 8px 32px 0 rgba(74, 124, 126, 0.37);
   }
 
   .glass-button {
@@ -47,7 +47,7 @@
 }
 
 body {
-  background: radial-gradient(circle at 50% -20%, #4338ca 0%, #1e1b4b 50%, #000000 100%);
+  background: radial-gradient(circle at 50% -20%, #4a7c7e 0%, #2d5456 50%, #1a3334 100%);
   min-height: 100vh;
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;

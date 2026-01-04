@@ -28,70 +28,70 @@ export default function Home() {
   const roleData = userStats?.byRole || []
 
   return (
-    <div className="space-y-8 p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 md:space-y-8 p-0 md:p-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
         <div>
-          <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-indigo-200">
+          <h2 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-indigo-200">
             CampNav Analytics
           </h2>
           <p className="text-blue-200/40 mt-1 uppercase text-[10px] font-bold tracking-[0.2em]">Real-time Operations Dashboard</p>
         </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="glass-card p-6 flex items-center gap-4 border-blue-500/20 shadow-blue-500/5 shadow-xl">
-          <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            <Users size={24} />
+      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="glass-card p-4 md:p-6 flex items-center gap-3 md:gap-4 border-blue-500/20 shadow-blue-500/5 shadow-xl">
+          <div className="p-2 md:p-3 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <Users size={20} className="md:w-6 md:h-6" />
           </div>
           <div>
             <p className="text-[10px] uppercase font-bold tracking-widest text-blue-200/40">Registered Users</p>
-            <p className="text-2xl font-bold text-white font-mono">{userStats?.totalUsers ?? "..."}</p>
+            <p className="text-xl md:text-2xl font-bold text-white font-mono">{userStats?.totalUsers ?? "..."}</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 flex items-center gap-4 border-indigo-500/20 shadow-indigo-500/5 shadow-xl">
-          <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            <ShoppingBag size={24} />
+        <div className="glass-card p-4 md:p-6 flex items-center gap-3 md:gap-4 border-indigo-500/20 shadow-indigo-500/5 shadow-xl">
+          <div className="p-2 md:p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <ShoppingBag size={20} className="md:w-6 md:h-6" />
           </div>
           <div>
             <p className="text-[10px] uppercase font-bold tracking-widest text-indigo-200/40">Total Orders</p>
-            <p className="text-2xl font-bold text-white font-mono">{orderList.length}</p>
+            <p className="text-xl md:text-2xl font-bold text-white font-mono">{orderList.length}</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 flex items-center gap-4 border-amber-500/20 shadow-amber-500/5 shadow-xl">
-          <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <Activity size={24} />
+        <div className="glass-card p-4 md:p-6 flex items-center gap-3 md:gap-4 border-amber-500/20 shadow-amber-500/5 shadow-xl">
+          <div className="p-2 md:p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <Activity size={20} className="md:w-6 md:h-6" />
           </div>
           <div>
             <p className="text-[10px] uppercase font-bold tracking-widest text-amber-200/40">Active Entries</p>
-            <p className="text-2xl font-bold text-white font-mono">{userStats?.activeVisitors ?? "..."}</p>
+            <p className="text-xl md:text-2xl font-bold text-white font-mono">{userStats?.activeVisitors ?? "..."}</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 flex items-center gap-4 border-emerald-500/20 shadow-emerald-500/5 shadow-xl">
-          <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <TrendingUp size={24} />
+        <div className="glass-card p-4 md:p-6 flex items-center gap-3 md:gap-4 border-emerald-500/20 shadow-emerald-500/5 shadow-xl">
+          <div className="p-2 md:p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <TrendingUp size={20} className="md:w-6 md:h-6" />
           </div>
           <div>
             <p className="text-[10px] uppercase font-bold tracking-widest text-emerald-200/40">Resolution</p>
-            <p className="text-2xl font-bold text-white font-mono">
+            <p className="text-xl md:text-2xl font-bold text-white font-mono">
               {orderList.length ? Math.round((completed / orderList.length) * 100) : 0}%
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="glass-card p-6 border-indigo-500/10">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-lg font-semibold flex items-center gap-2 text-indigo-100">
-              <BarIcon size={18} className="text-indigo-400" />
+      <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-2">
+        <div className="glass-card p-4 md:p-6 border-indigo-500/10">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6 md:mb-8">
+            <h3 className="text-base md:text-lg font-semibold flex items-center gap-2 text-indigo-100">
+              <BarIcon size={16} className="text-indigo-400 md:w-[18px] md:h-[18px]" />
               Order Operations
             </h3>
             <span className="text-[10px] font-mono text-white/20">STATUS_DISTRIBUTION</span>
           </div>
-          <div className="h-[300px] w-full">
+          <div className="h-[250px] md:h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={orderData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
