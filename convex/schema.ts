@@ -88,4 +88,13 @@ export default defineSchema({
     image: v.optional(v.string()), // storageId
   }).index("by_userId", ["userId"])
     .index("by_status", ["status"]),
+  activities: defineTable({
+    title: v.string(),
+    description: v.string(),
+    date: v.number(), // timestamp
+    time: v.string(),
+    location: v.string(),
+    category: v.optional(v.string()), // e.g. "Social", "Workshop", "Outdoor"
+    capacity: v.optional(v.number()),
+  }).index("by_date", ["date"]),
 });
