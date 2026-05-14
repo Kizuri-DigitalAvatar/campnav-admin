@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 // Assign a staff member to an existing request's task
 export const assignStaffToRequest = mutation({
@@ -11,12 +12,12 @@ export const assignStaffToRequest = mutation({
         const request = await ctx.db.get(args.requestId);
         if (!request) throw new Error("Request not found");
 
-        // Find existing task for this request
         const tasks = await ctx.db.query("tasks").collect();
         const existingTask = tasks.find(t => t.requestId === args.requestId);
 
+        let taskId: any;
+
         if (existingTask) {
-            // Free previous staff if any
             if (existingTask.staffId && existingTask.staffId !== args.staffId) {
                 const prev = await ctx.db.get(existingTask.staffId);
                 if (prev?.currentTaskId === existingTask._id) {
@@ -25,9 +26,9 @@ export const assignStaffToRequest = mutation({
             }
             await ctx.db.patch(existingTask._id, { staffId: args.staffId, status: "pending" });
             await ctx.db.patch(args.staffId, { currentTaskId: existingTask._id });
+            taskId = existingTask._id;
         } else {
-            // No task yet — create one
-            const taskId = await ctx.db.insert("tasks", {
+            taskId = await ctx.db.insert("tasks", {
                 staffId: args.staffId,
                 requestId: args.requestId,
                 roomNumber: request.roomNumber,
@@ -41,6 +42,50 @@ export const assignStaffToRequest = mutation({
         }
 
         await ctx.db.patch(args.requestId, { status: "in_progress" });
+
+        const serviceLabel = request.type.replace("_", " ");
+        const staff = await ctx.db.get(args.staffId);
+
+        // Notify the assigned staff member
+        await ctx.runMutation(api.notifications.sendAssignmentNotification, {
+            userId: args.staffId,
+            assignmentId: taskId,
+            message: `New ${serviceLabel} task assigned — Room ${request.roomNumber}: ${request.description}`,
+        });
+
+        // Notify the resident that their request is now in progress
+        const resident = await ctx.db.get(request.userId);
+        if (resident) {
+            const prefs = resident.notificationPreferences ?? { push: true, email: true, sms: false };
+            const residentMsg = `Your ${serviceLabel} request for ${request.roomNumber} has been assigned to ${staff?.name ?? "a staff member"} and is now in progress.`;
+            const inserts = [];
+            if (prefs.push) {
+                inserts.push(ctx.db.insert("notifications", {
+                    userId: request.userId,
+                    assignmentId: taskId,
+                    requestId: args.requestId,
+                    type: "assignment",
+                    channel: "push",
+                    status: "pending",
+                    message: residentMsg,
+                }));
+            }
+            if (prefs.email && resident.email) {
+                inserts.push(ctx.db.insert("notifications", {
+                    userId: request.userId,
+                    assignmentId: taskId,
+                    requestId: args.requestId,
+                    type: "assignment",
+                    channel: "email",
+                    status: "pending",
+                    message: residentMsg,
+                }));
+            }
+            await Promise.all(inserts);
+        }
+
+        // Trigger email processing immediately
+        await ctx.scheduler.runAfter(0, api.notifications.processEmailNotifications, {});
     },
 });
 
