@@ -464,4 +464,21 @@ export default defineSchema({
     occupancyRate: v.number(),
     createdAt: v.number(),
   }).index("by_date", ["date"]),
+
+  loginLogs: defineTable({
+    userId: v.optional(v.id("users")),
+    email: v.string(),
+    userName: v.optional(v.string()),
+    role: v.optional(v.string()),
+    app: v.string(), // "admin" | "client"
+    status: v.string(), // "success" | "failed"
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    browser: v.optional(v.string()),
+    os: v.optional(v.string()),
+    device: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_app", ["app"])
+    .index("by_status", ["status"])
+    .index("by_userId", ["userId"]),
 });

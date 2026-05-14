@@ -26,7 +26,7 @@ export const getActiveBroadcasts = query({
     // Enrich with user information
     const enrichedBroadcasts = await Promise.all(
       [...broadcasts, ...recentResolved].map(async (broadcast) => {
-        const user = await ctx.db.get(broadcast.userId);
+        const user = broadcast.userId ? await ctx.db.get(broadcast.userId) as Doc<"users"> | null : null;
         return {
           ...broadcast,
           createdBy: user?.name || "System",

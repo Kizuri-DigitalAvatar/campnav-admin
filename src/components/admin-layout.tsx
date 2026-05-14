@@ -26,7 +26,8 @@ import {
     CalendarClock,
     ShieldCheck,
     ClipboardCheck,
-    ChevronDown
+    ChevronDown,
+    ActivitySquare
 } from "lucide-react";
 
 const navSections = [
@@ -58,6 +59,7 @@ const navSections = [
             { name: 'Room Management', href: '/room-management', icon: Building },
             { name: 'Access Control', href: '/access-control', icon: ShieldCheck },
             { name: 'RnR / Leave', href: '/rnr', icon: CalendarClock },
+            { name: 'Login Logs', href: '/login-logs', icon: ActivitySquare },
         ],
     },
     {
@@ -89,7 +91,7 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
             if (userRole === "camp_manager") return true;
             
             // Restrictions for camp_supervisor
-            const restricted = ["/users", "/access-control"];
+            const restricted = ["/users", "/access-control", "/login-logs"];
             return !restricted.includes(item.href);
         })
     })).filter(section => section.items.length > 0);

@@ -16,6 +16,7 @@ import type * as crons from "../crons.js";
 import type * as email from "../email.js";
 import type * as facilities from "../facilities.js";
 import type * as images from "../images.js";
+import type * as loginLogs from "../loginLogs.js";
 import type * as loyalty from "../loyalty.js";
 import type * as maintenance from "../maintenance.js";
 import type * as meals from "../meals.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   facilities: typeof facilities;
   images: typeof images;
+  loginLogs: typeof loginLogs;
   loyalty: typeof loyalty;
   maintenance: typeof maintenance;
   meals: typeof meals;
