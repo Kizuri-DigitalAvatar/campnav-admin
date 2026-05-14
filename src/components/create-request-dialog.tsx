@@ -47,7 +47,8 @@ interface Props {
 
 export function CreateRequestDialog({ open, onOpenChange }: Props) {
     const createRequest = useMutation(api.requests.create)
-    const residents = useQuery(api.users.list, { role: "resident" }) ?? []
+    const allUsers = useQuery(api.users.list, {}) ?? []
+    const residents = (allUsers as any[]).filter((u) => u.role === "resident" || u.role === "guest")
 
     const [step, setStep] = useState<1 | 2>(1)
     const [selectedUser, setSelectedUser] = useState<any>(null)
@@ -284,7 +285,7 @@ export function CreateRequestDialog({ open, onOpenChange }: Props) {
                                     placeholder="e.g. Cabin 101"
                                     value={roomNumber}
                                     onChange={e => setRoomNumber(e.target.value)}
-                                    className="h-11 rounded-xl border-2"
+                                    className="h-11 rounded-xl border-2 bg-gray-100"
                                 />
                             </div>
 
