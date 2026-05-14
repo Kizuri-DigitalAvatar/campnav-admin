@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
+import { toast } from "sonner"
 import {
     Clock,
     CheckCircle2,
@@ -83,9 +84,10 @@ export default function RequestsPage() {
                 workOrderSent,
             })
             setIsDetailsOpen(false)
+            toast.success("Request updated", { description: "Office use fields saved." })
         } catch (error) {
             console.error(error)
-            alert("Failed to update office use fields")
+            toast.error("Update failed", { description: "Could not save office use fields." })
         } finally {
             setIsSavingOffice(false)
         }
@@ -281,7 +283,11 @@ export default function RequestsPage() {
                                     <td className="p-6" onClick={(e) => e.stopPropagation()}>
                                         <Select 
                                             value={req.status} 
-                                            onValueChange={(val: string) => updateStatus({ id: req._id, status: val })}
+                                            onValueChange={(val: string) => {
+                                                updateStatus({ id: req._id, status: val })
+                                                    .then(() => toast.success("Status updated", { description: `Marked as ${val.replace("_", " ")}.` }))
+                                                    .catch(() => toast.error("Update failed"))
+                                            }}
                                         >
                                             <SelectTrigger className={`h-9 w-32 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 ${getStatusStyle(req.status)}`}>
                                                 <SelectValue />
@@ -308,7 +314,11 @@ export default function RequestsPage() {
                                                 className="rounded-xl hover:bg-destructive/10 text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-2"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (confirm("Delete this request record?")) removeRequest({ id: req._id })
+                                                    if (confirm("Delete this request record?")) {
+                                                        removeRequest({ id: req._id })
+                                                            .then(() => toast.success("Request deleted"))
+                                                            .catch(() => toast.error("Delete failed"))
+                                                    }
                                                 }}
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -493,7 +503,9 @@ export default function RequestsPage() {
                                             className="h-12 w-12 rounded-2xl p-0 border-2 shadow-lg shadow-destructive/10"
                                             onClick={() => {
                                                 if (confirm("Permanently delete this request?")) {
-                                                    removeRequest({ id: selectedRequest._id });
+                                                    removeRequest({ id: selectedRequest._id })
+                                                        .then(() => toast.success("Request deleted"))
+                                                        .catch(() => toast.error("Delete failed"))
                                                     setIsDetailsOpen(false);
                                                 }
                                             }}
