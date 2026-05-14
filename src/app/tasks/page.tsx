@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
+import { toast } from "sonner"
 import {
     Trash2, ClipboardList, Bed, Wrench, Eraser,
     ChevronRight, CheckCircle2, Clock, AlertCircle, Users, Inbox
@@ -48,12 +49,18 @@ export default function TasksPage() {
         if (!selectedRequest || !selectedStaff) return
         setAssigning(true)
         try {
+            const staffMember = allUsers.find((u: any) => u._id === selectedStaff)
             await assignStaff({
                 requestId: selectedRequest as Id<"requests">,
                 staffId: selectedStaff as Id<"users">,
             })
             setSelectedRequest(null)
             setSelectedStaff(null)
+            toast.success("Task assigned", {
+                description: staffMember ? `Assigned to ${staffMember.name}` : "Staff member notified.",
+            })
+        } catch {
+            toast.error("Assignment failed", { description: "Please try again." })
         } finally {
             setAssigning(false)
         }
