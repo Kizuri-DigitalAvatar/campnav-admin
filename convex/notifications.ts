@@ -419,3 +419,46 @@ export const processEmailNotifications = action({
         }
     },
 });
+
+export const sendCamperNotification = mutation({
+    args: {
+        userId: v.id("users"),
+        assignmentId: v.optional(v.id("tasks")),
+        requestId: v.optional(v.id("requests")),
+        type: v.string(),
+        message: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.db.get(args.userId);
+        if (!user) return;
+
+        const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
+        const notifications = [];
+
+        if (prefs.push) {
+            notifications.push(ctx.db.insert("notifications", {
+                userId: args.userId,
+                assignmentId: args.assignmentId,
+                requestId: args.requestId,
+                type: args.type,
+                channel: "push",
+                status: "pending",
+                message: args.message,
+            }));
+        }
+
+        if (prefs.email && user.email) {
+            notifications.push(ctx.db.insert("notifications", {
+                userId: args.userId,
+                assignmentId: args.assignmentId,
+                requestId: args.requestId,
+                type: args.type,
+                channel: "email",
+                status: "pending",
+                message: args.message,
+            }));
+        }
+
+        await Promise.all(notifications);
+    },
+});
