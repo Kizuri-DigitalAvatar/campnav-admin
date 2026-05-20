@@ -390,11 +390,11 @@ export default defineSchema({
     
   facilityBookings: defineTable({
     userId: v.id("users"),
-    facility: v.string(), // "gym", "mini_golf", "tennis"
+    facility: v.string(),
     date: v.number(),
     startTime: v.string(),
     endTime: v.string(),
-    status: v.string(), // "pending", "confirmed", "cancelled", "completed"
+    status: v.string(),
     numberOfParticipants: v.optional(v.number()),
     specialRequests: v.optional(v.string()),
     createdAt: v.number(),
@@ -403,7 +403,30 @@ export default defineSchema({
     .index("by_facility", ["facility"])
     .index("by_date", ["date"])
     .index("by_status", ["status"]),
-    
+
+  facilities: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()), // "sports", "recreation", "wellness", "dining"
+    location: v.optional(v.string()),
+    capacity: v.optional(v.number()),
+    images: v.optional(v.array(v.string())), // Convex storage IDs
+    amenities: v.optional(v.array(v.string())),
+    openingTime: v.optional(v.string()),
+    closingTime: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    createdBy: v.optional(v.id("users")),
+  }).index("by_active", ["isActive"])
+    .index("by_category", ["category"]),
+
+  adminPresence: defineTable({
+    userId: v.id("users"),
+    lastSeen: v.number(),
+    currentPage: v.optional(v.string()),
+  }).index("by_userId", ["userId"])
+    .index("by_lastSeen", ["lastSeen"]),
+
   preventiveMaintenance: defineTable({
     title: v.string(),
     type: v.string(), // "grease_service", "fumigation", "ac_service", "general"
