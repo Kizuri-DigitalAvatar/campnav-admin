@@ -200,8 +200,9 @@ export const sendReminderNotification = mutation({
 // Notify admin about unresponsive worker
 export const notifyAdminUnresponsive = mutation({
     args: {
-        assignmentId: v.id("tasks"),
-        workerName: v.string(),
+        assignmentId: v.optional(v.id("tasks")),
+        requestId: v.optional(v.id("requests")),
+        workerName: v.optional(v.string()),
         message: v.string(),
     },
     handler: async (ctx, args) => {
