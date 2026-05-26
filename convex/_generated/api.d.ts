@@ -12,9 +12,14 @@ import type * as activities from "../activities.js";
 import type * as announcements from "../announcements.js";
 import type * as audits from "../audits.js";
 import type * as billing from "../billing.js";
+import type * as cron from "../cron.js";
 import type * as crons from "../crons.js";
 import type * as email from "../email.js";
+import type * as emergencyBroadcasts from "../emergencyBroadcasts.js";
 import type * as facilities from "../facilities.js";
+import type * as files from "../files.js";
+import type * as hse from "../hse.js";
+import type * as hseIncidents from "../hseIncidents.js";
 import type * as images from "../images.js";
 import type * as loginLogs from "../loginLogs.js";
 import type * as loyalty from "../loyalty.js";
@@ -28,9 +33,12 @@ import type * as products from "../products.js";
 import type * as reports from "../reports.js";
 import type * as requests from "../requests.js";
 import type * as rnr from "../rnr.js";
+import type * as rnrRequests from "../rnrRequests.js";
 import type * as rooms from "../rooms.js";
 import type * as safety from "../safety.js";
+import type * as search from "../search.js";
 import type * as tasks from "../tasks.js";
+import type * as test from "../test.js";
 import type * as users from "../users.js";
 
 import type {
@@ -44,9 +52,14 @@ declare const fullApi: ApiFromModules<{
   announcements: typeof announcements;
   audits: typeof audits;
   billing: typeof billing;
+  cron: typeof cron;
   crons: typeof crons;
   email: typeof email;
+  emergencyBroadcasts: typeof emergencyBroadcasts;
   facilities: typeof facilities;
+  files: typeof files;
+  hse: typeof hse;
+  hseIncidents: typeof hseIncidents;
   images: typeof images;
   loginLogs: typeof loginLogs;
   loyalty: typeof loyalty;
@@ -60,9 +73,12 @@ declare const fullApi: ApiFromModules<{
   reports: typeof reports;
   requests: typeof requests;
   rnr: typeof rnr;
+  rnrRequests: typeof rnrRequests;
   rooms: typeof rooms;
   safety: typeof safety;
+  search: typeof search;
   tasks: typeof tasks;
+  test: typeof test;
   users: typeof users;
 }>;
 

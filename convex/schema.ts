@@ -16,7 +16,7 @@ export default defineSchema({
     email: v.string(),
     image: v.optional(v.string()),
     password: v.optional(v.string()),
-    role: v.optional(v.string()), // camp_manager, camp_supervisor, staff, resident
+    role: v.optional(v.string()), // camp_manager, camp_supervisor, staff, resident, guest
     userCategory: v.optional(v.string()), // admin, staff, residents
     userSubcategory: v.optional(v.string()), // super_admin, kitchen, guest, etc.
     department: v.optional(v.string()), // For staff: housekeeping, maintenance, kitchen, shop, electrical
@@ -34,10 +34,11 @@ export default defineSchema({
     campStaffId: v.optional(v.string()), // For camp-staff
     points: v.optional(v.number()),
     roomNumber: v.optional(v.string()), // For campers
+    dietaryRequirements: v.optional(v.array(v.string())), // For meal preferences
     roomCategory: v.optional(v.string()), // executive, hq_house, standard
     accessLevel: v.optional(v.number()), // 1-5 access level for different areas
     lastAccessScan: v.optional(v.number()), // Last time they scanned in/out
-    disciplinaryPoints: v.optional(v.number()), // Points deducted for disciplinary issues
+    disciplinaryPoints: v.optional(v.number()), // Points deducted for disciplinary issues / loyalty points deductions
     leaveBalance: v.optional(v.number()), // Days of leave remaining
     onLeaveUntil: v.optional(v.number()), // Timestamp until when they're on leave
     supervisorId: v.optional(v.id("users")), // For staff reporting hierarchy
@@ -82,7 +83,6 @@ export default defineSchema({
     requestId: v.optional(v.id("requests")),
     roomNumber: v.string(),
     serviceType: v.string(), // e.g. "housekeeping", "maintenance", "laundry"
-    // Extra context so manually-created tasks carry the same detail as client requests
     description: v.optional(v.string()),
     priority: v.optional(v.string()), // "urgent" | "important" | "low"
     category: v.optional(v.string()),
@@ -105,6 +105,12 @@ export default defineSchema({
       text: v.optional(v.string()),
       images: v.optional(v.array(v.string())), // Storage IDs
       audio: v.optional(v.string()), // Storage ID
+      replies: v.optional(v.array(v.object({
+        userId: v.id("users"),
+        userName: v.string(),
+        text: v.string(),
+        timestamp: v.number(),
+      }))),
     }))),
     lastReminderSent: v.optional(v.number()), // For escalation tracking
     reminderCount: v.optional(v.number()), // Number of reminders sent
@@ -137,12 +143,15 @@ export default defineSchema({
   }).index("by_status", ["status"]),
   rooms: defineTable({
     roomNumber: v.string(),
-    category: v.string(), // "standard", "deluxe", "cabin"
+    category: v.string(), // "standard", "deluxe", "cabin", "executive", "hq_house"
+    subCategory: v.optional(v.string()), // E1, E2, E3, E4, H1:1, H1:2, etc.
+    bedConfiguration: v.optional(v.string()), // B1, B2 for standard rooms
     capacity: v.number(),
     status: v.string(), // "available", "occupied", "maintenance"
     occupantId: v.optional(v.id("users")), // current visitor
     pricePerNight: v.optional(v.number()),
-  }).index("by_status", ["status"]),
+  }).index("by_status", ["status"])
+    .index("by_category", ["category"]),
   products: defineTable({
     name: v.string(),
     description: v.string(),
@@ -275,7 +284,7 @@ export default defineSchema({
     // Core fields (required by both admin and client)
     title: v.string(),
     message: v.string(),
-    type: v.string(), // "weather", "fire", "security", "medical", "site_breakdown"
+    type: v.string(), // "weather", "fire", "security", "medical", "site_breakdown", "general"
     severity: v.string(), // "low", "medium", "high", "critical"
     createdAt: v.number(),
     // Admin broadcast fields
@@ -285,7 +294,7 @@ export default defineSchema({
     estimatedDuration: v.optional(v.string()), // "2 hours", "until further notice"
     status: v.optional(v.string()), // "active", "resolved", "cancelled"
     resolvedAt: v.optional(v.number()),
-    targetAudience: v.optional(v.array(v.string())), // ["all_staff", "residents", "visitors", "management"]
+    targetAudience: v.optional(v.array(v.string())), // ["all_staff", "residents", "visitors", "management", "all"]
     deliveryChannels: v.optional(v.array(v.string())), // ["push", "email", "sms", "display_boards"]
     deliveryStatus: v.optional(v.array(v.object({
       channel: v.string(),
@@ -304,7 +313,7 @@ export default defineSchema({
     .index("by_severity", ["severity"])
     .index("by_createdAt", ["createdAt"]),
   
-  // Syncing with client schema
+  // HSE Management
   hseIncidents: defineTable({
     title: v.string(),
     description: v.string(),
