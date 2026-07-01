@@ -129,6 +129,58 @@ export const sendAssignmentNotification = mutation({
     },
 });
 
+export const sendCamperNotification = mutation({
+    args: {
+        userId: v.id("users"),
+        assignmentId: v.optional(v.id("tasks")),
+        requestId: v.optional(v.id("requests")),
+        type: v.string(), // "acceptance", "completion", "escalation"
+        message: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.db.get(args.userId);
+        if (!user) {
+            console.warn(
+                `[sendCamperNotification] Skipping notification for missing user ${args.userId}`
+            );
+            return;
+        }
+
+        const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
+        const notifications = [];
+
+        if (prefs.push) {
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    requestId: args.requestId,
+                    type: args.type,
+                    channel: "push",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        if (prefs.email && user.email) {
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    requestId: args.requestId,
+                    type: args.type,
+                    channel: "email",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        await Promise.all(notifications);
+    },
+});
+
 // Send reminder notification
 export const sendReminderNotification = mutation({
     args: {

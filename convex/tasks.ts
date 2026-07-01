@@ -133,7 +133,7 @@ export const remove = mutation({
         const assignment = await ctx.db.get(args.id);
         if (!assignment) return;
 
-        // If assigned to a staff, clear their currentTaskId
+        // 1. If assigned to a staff, clear their currentTaskId
         if (assignment.staffId) {
             const staff = await ctx.db.get(assignment.staffId);
             if (staff && staff.currentTaskId === assignment._id) {
@@ -142,6 +142,18 @@ export const remove = mutation({
                 });
             }
         }
+
+        // 2. Cleanup associated notifications
+        const notifications = await ctx.db
+            .query("notifications")
+            .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.id))
+            .collect();
+
+        for (const notification of notifications) {
+            await ctx.db.delete(notification._id);
+        }
+
+        // 3. Delete the assignment
         await ctx.db.delete(args.id);
     },
 });
@@ -205,6 +217,76 @@ export const list = query({
     },
 });
 
+// Record that a staff member has viewed an unassigned/pending task
+export const recordView = mutation({
+    args: { id: v.id("tasks"), staffId: v.id("users") },
+    handler: async (ctx, args) => {
+        const task = await ctx.db.get(args.id);
+        if (!task) return;
+
+        // Only record views for pending tasks
+        if (task.status !== "pending") return;
+
+        const viewedBy = task.viewedBy || [];
+        if (!viewedBy.includes(args.staffId)) {
+            viewedBy.push(args.staffId);
+            await ctx.db.patch(args.id, { viewedBy });
+        }
+    },
+});
+
+// Get a single task by ID with full details
+export const getById = query({
+    args: { id: v.id("tasks") },
+    handler: async (ctx, args) => {
+        const task = await ctx.db.get(args.id);
+        if (!task) return null;
+
+        let staffName = "Unassigned";
+        if (task.staffId) {
+            const staff = await ctx.db.get(task.staffId);
+            if (staff) staffName = staff.name;
+        }
+
+        // Get names of people who viewed it
+        const viewers = await Promise.all(
+            (task.viewedBy || []).map(async (id) => {
+                const u = await ctx.db.get(id);
+                return u?.name || "Unknown Staff";
+            })
+        );
+
+        let requestDetails = null;
+        if (task.requestId) {
+            const req = await ctx.db.get(task.requestId);
+            if (req) {
+                let imageUrl = null;
+                if (req.image) {
+                    try { imageUrl = await ctx.storage.getUrl(req.image); } catch (e) { }
+                }
+                requestDetails = { ...req, imageUrl };
+            }
+        }
+
+        const updatesWithUrls = await Promise.all(
+            (task.updates || []).map(async (update) => {
+                const imageUrls = await Promise.all(
+                    (update.images || []).map(async (id) => {
+                        try { return await ctx.storage.getUrl(id); } catch (e) { return null; }
+                    })
+                );
+                let audioUrl = null;
+                if (update.audio) {
+                    try { audioUrl = await ctx.storage.getUrl(update.audio); } catch (e) { }
+                }
+                return { ...update, imageUrls: imageUrls.filter(Boolean), audioUrl };
+            })
+        );
+
+        return { ...task, staffName, viewers, requestDetails, updatesWithUrls };
+    },
+});
+
 // Get assignments for a specific worker
 export const getWorkerAssignments = query({
     args: { workerId: v.id("users") },
@@ -228,6 +310,36 @@ export const getWorkerAssignments = query({
 
         return Promise.all(
             allTasks.map(async (a) => {
+                // Get image URLs for updates
+                const updatesWithUrls = await Promise.all(
+                    (a.updates || []).map(async (update) => {
+                        const imageUrls = await Promise.all(
+                            (update.images || []).map(async (storageId) => {
+                                try {
+                                    return await ctx.storage.getUrl(storageId);
+                                } catch (e) {
+                                    return null;
+                                }
+                            })
+                        );
+
+                        let audioUrl = null;
+                        if (update.audio) {
+                            try {
+                                audioUrl = await ctx.storage.getUrl(update.audio);
+                            } catch (e) {
+                                audioUrl = null;
+                            }
+                        }
+
+                        return {
+                            ...update,
+                            imageUrls: imageUrls.filter(url => url !== null),
+                            audioUrl,
+                        };
+                    })
+                );
+
                 // Get associated request details if any
                 let requestDetails = null;
                 if (a.requestId) {
@@ -249,7 +361,7 @@ export const getWorkerAssignments = query({
                     }
                 }
 
-                return { ...a, requestDetails };
+                return { ...a, updatesWithUrls, requestDetails };
             })
         );
     },
@@ -295,6 +407,32 @@ export const startAssignment = mutation({
     },
 });
 
+// Worker adds update with multimedia
+export const addUpdate = mutation({
+    args: {
+        id: v.id("tasks"),
+        text: v.optional(v.string()),
+        images: v.optional(v.array(v.string())), // Storage IDs
+        audio: v.optional(v.string()), // Storage ID
+    },
+    handler: async (ctx, args) => {
+        const assignment = await ctx.db.get(args.id);
+        if (!assignment) throw new Error("Assignment not found");
+
+        const newUpdate = {
+            timestamp: Date.now(),
+            text: args.text,
+            images: args.images,
+            audio: args.audio,
+        };
+
+        const updates = assignment.updates || [];
+        updates.push(newUpdate);
+
+        await ctx.db.patch(args.id, { updates });
+    },
+});
+
 // Camp-staff confirms they accept the task
 export const confirmTask = mutation({
     args: { id: v.id("tasks"), staffId: v.id("users") },
@@ -316,6 +454,23 @@ export const confirmTask = mutation({
         await ctx.db.patch(args.staffId, {
             currentTaskId: args.id,
         });
+
+        // Notify camper that the worker has accepted
+        if (assignment.requestId) {
+            const request = await ctx.db.get(assignment.requestId);
+            if (request) {
+                const staff = await ctx.db.get(args.staffId);
+                await ctx.db.insert("notifications", {
+                    userId: request.userId,
+                    assignmentId: args.id,
+                    requestId: assignment.requestId,
+                    type: "acceptance",
+                    channel: "push",
+                    status: "pending",
+                    message: `${staff?.name || "A worker"} has accepted your request for ${assignment.roomNumber}.`,
+                });
+            }
+        }
     },
 });
 
@@ -343,6 +498,22 @@ export const completeTask = mutation({
             await ctx.db.patch(assignment.staffId, {
                 currentTaskId: undefined,
             });
+        }
+
+        // Notify camper that the task is completed
+        if (assignment.requestId) {
+            const request = await ctx.db.get(assignment.requestId);
+            if (request) {
+                await ctx.db.insert("notifications", {
+                    userId: request.userId,
+                    assignmentId: args.id,
+                    requestId: assignment.requestId,
+                    type: "completion",
+                    channel: "push",
+                    status: "pending",
+                    message: `Your request for ${assignment.roomNumber} has been completed.`,
+                });
+            }
         }
     },
 });

@@ -177,9 +177,140 @@ export const updateStatus = mutation({
 export const remove = mutation({
     args: { id: v.id("requests") },
     handler: async (ctx, args) => {
+        // 1. Find and cleanup all associated housekeeping assignments
+        const assignments = await ctx.db
+            .query("tasks")
+            .withIndex("by_requestId", (q) => q.eq("requestId", args.id))
+            .collect();
+
+        for (const assignment of assignments) {
+            // If assigned to a staff, clear their currentTaskId
+            if (assignment.staffId) {
+                const staff = await ctx.db.get(assignment.staffId);
+                if (staff && staff.currentTaskId === assignment._id) {
+                    await ctx.db.patch(assignment.staffId, {
+                        currentTaskId: undefined,
+                    });
+                }
+            }
+            await ctx.db.delete(assignment._id);
+        }
+
+        // 2. Cleanup all associated notifications
+        const notifications = await ctx.db
+            .query("notifications")
+            .withIndex("by_requestId", (q) => q.eq("requestId", args.id))
+            .collect();
+
+        for (const notification of notifications) {
+            await ctx.db.delete(notification._id);
+        }
+
+        // 3. Delete the request itself
         await ctx.db.delete(args.id);
     },
 });
+
+export const cancel = mutation({
+    args: { id: v.id("requests") },
+    handler: async (ctx, args) => {
+        const request = await ctx.db.get(args.id);
+        if (!request) throw new Error("Request not found");
+
+        // Update request status
+        await ctx.db.patch(args.id, { status: "cancelled" });
+
+        // Find associated task
+        const task = await ctx.db
+            .query("tasks")
+            .withIndex("by_requestId", (q) => q.eq("requestId", args.id))
+            .first();
+
+        if (task) {
+            // Update task status
+            await ctx.db.patch(task._id, { status: "cancelled" });
+
+            // Free up assigned staff
+            if (task.staffId) {
+                const staff = await ctx.db.get(task.staffId);
+                if (staff && staff.currentTaskId === task._id) {
+                    await ctx.db.patch(task.staffId, {
+                        currentTaskId: undefined,
+                    });
+                }
+            }
+        }
+    },
+});
+
+export const get = query({
+    args: { id: v.id("requests") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.id);
+    },
+});
+
+export const getWithTaskDetails = query({
+    args: { id: v.id("requests") },
+    handler: async (ctx, args) => {
+        const request = await ctx.db.get(args.id);
+        if (!request) return null;
+
+        // Get associated task
+        const task = await ctx.db
+            .query("tasks")
+            .withIndex("by_requestId", (q) => q.eq("requestId", args.id))
+            .unique();
+
+        let taskDetails = null;
+        if (task) {
+            let staffName = "Unassigned";
+            if (task.staffId) {
+                const staff = await ctx.db.get(task.staffId);
+                if (staff) staffName = staff.name;
+            }
+
+            // Get names of people who viewed it
+            const viewers = await Promise.all(
+                (task.viewedBy || []).map(async (id) => {
+                    const u = await ctx.db.get(id);
+                    return u?.name || "Unknown Staff";
+                })
+            );
+
+            // Get image URLs for updates
+            const updatesWithUrls = await Promise.all(
+                (task.updates || []).map(async (update) => {
+                    const imageUrls = await Promise.all(
+                        (update.images || []).map(async (id) => {
+                            try { return await ctx.storage.getUrl(id); } catch (e) { return null; }
+                        })
+                    );
+                    let audioUrl = null;
+                    if (update.audio) {
+                        try { audioUrl = await ctx.storage.getUrl(update.audio); } catch (e) { }
+                    }
+                    return { ...update, imageUrls: imageUrls.filter(Boolean), audioUrl };
+                })
+            );
+
+            taskDetails = {
+                ...task,
+                staffName,
+                viewers,
+                updatesWithUrls,
+            };
+        }
+
+        let imageUrl = null;
+        if (request.image) {
+            try { imageUrl = await ctx.storage.getUrl(request.image); } catch (e) { }
+        }
+
+        return { ...request, imageUrl, taskDetails };
+    },
+});
+
 export const updateOfficeUse = mutation({
     args: {
         id: v.id("requests"),

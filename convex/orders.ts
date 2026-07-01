@@ -161,3 +161,39 @@ export const deleteOrder = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+export const listForUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .collect();
+
+    return Promise.all(orders.map(async (o: any) => {
+      let productImage = o.productImage;
+      if (productImage && !productImage.startsWith("http")) {
+        try {
+          productImage = await ctx.storage.getUrl(productImage);
+        } catch (e) {
+          console.error("Failed to resolve product image", productImage, e);
+        }
+      }
+      if (!productImage && o.source === "shop") {
+        const productList = await ctx.db.query("products").collect();
+        const product = productList.find(p => p.name === o.summary);
+        if (product?.image) {
+          try {
+            productImage = product.image.startsWith("http")
+              ? product.image
+              : await ctx.storage.getUrl(product.image);
+          } catch (e) {
+            console.error("Failed to resolve fallback product image", product.image, e);
+          }
+        }
+      }
+      return { ...o, productImage };
+    }));
+  },
+});

@@ -34,6 +34,7 @@ export default defineSchema({
     campStaffId: v.optional(v.string()), // For camp-staff
     points: v.optional(v.number()),
     roomNumber: v.optional(v.string()), // For campers
+    dietaryRequirements: v.optional(v.array(v.string())),
     roomCategory: v.optional(v.string()), // executive, hq_house, standard
     accessLevel: v.optional(v.number()), // 1-5 access level for different areas
     lastAccessScan: v.optional(v.number()), // Last time they scanned in/out
@@ -105,6 +106,12 @@ export default defineSchema({
       text: v.optional(v.string()),
       images: v.optional(v.array(v.string())), // Storage IDs
       audio: v.optional(v.string()), // Storage ID
+      replies: v.optional(v.array(v.object({
+        userId: v.id("users"),
+        userName: v.string(),
+        text: v.string(),
+        timestamp: v.number(),
+      }))),
     }))),
     lastReminderSent: v.optional(v.number()), // For escalation tracking
     reminderCount: v.optional(v.number()), // Number of reminders sent
@@ -138,11 +145,35 @@ export default defineSchema({
   rooms: defineTable({
     roomNumber: v.string(),
     category: v.string(), // "standard", "deluxe", "cabin"
+    subCategory: v.optional(v.string()), // E1, E2, E3, E4, H1:1, H1:2, etc.
+    bedConfiguration: v.optional(v.string()), // B1, B2 for standard rooms
     capacity: v.number(),
     status: v.string(), // "available", "occupied", "maintenance"
     occupantId: v.optional(v.id("users")), // current visitor
     pricePerNight: v.optional(v.number()),
-  }).index("by_status", ["status"]),
+  }).index("by_status", ["status"])
+    .index("by_category", ["category"]),
+  facilities: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    location: v.optional(v.string()),
+    capacity: v.optional(v.number()),
+    images: v.optional(v.array(v.string())),
+    amenities: v.optional(v.array(v.string())),
+    openingTime: v.optional(v.string()),
+    closingTime: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    createdBy: v.optional(v.id("users")),
+  }).index("by_active", ["isActive"])
+    .index("by_category", ["category"]),
+  adminPresence: defineTable({
+    userId: v.id("users"),
+    lastSeen: v.number(),
+    currentPage: v.optional(v.string()),
+  }).index("by_userId", ["userId"])
+    .index("by_lastSeen", ["lastSeen"]),
   products: defineTable({
     name: v.string(),
     description: v.string(),
