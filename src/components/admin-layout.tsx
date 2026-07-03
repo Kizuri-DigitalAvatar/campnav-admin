@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
+import { AdminNotificationBell } from "@/components/admin-notification-bell";
 import {
     LayoutDashboard,
     Users,
@@ -30,7 +31,14 @@ import {
     ActivitySquare
 } from "lucide-react";
 
-const navSections = [
+type NavItem = {
+    name: string;
+    href?: string; // omitted for group headers whose children carry the links
+    icon: React.ElementType;
+    children?: NavItem[];
+};
+
+const navSections: { title: string; items: NavItem[] }[] = [
     {
         title: "Overview",
         items: [
@@ -48,8 +56,13 @@ const navSections = [
         items: [
             { name: 'Orders', href: '/orders', icon: ShoppingCart },
             { name: 'Products', href: '/products', icon: Package },
-            { name: 'Room Service', href: '/room-service', icon: ShoppingCart },
-            { name: 'Menus', href: '/menus', icon: FileText },
+            {
+                name: 'Room Service', icon: ShoppingCart,
+                children: [
+                    { name: 'Orders', href: '/room-service', icon: ShoppingCart },
+                    { name: 'Menus', href: '/menus', icon: FileText },
+                ],
+            },
         ],
     },
     {
@@ -92,7 +105,7 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
             
             // Restrictions for camp_supervisor
             const restricted = ["/users", "/access-control", "/login-logs"];
-            return !restricted.includes(item.href);
+            return !item.href || !restricted.includes(item.href);
         })
     })).filter(section => section.items.length > 0);
 
@@ -106,7 +119,10 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
         setOpenSections((current) => {
             const next = { ...current };
             filteredNavSections.forEach((section) => {
-                if (section.items.some((item) => pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)))) {
+                const matchesItem = (item: NavItem): boolean =>
+                    (!!item.href && (pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)))) ||
+                    (item.children?.some(matchesItem) ?? false);
+                if (section.items.some(matchesItem)) {
                     next[section.title] = true;
                 }
             });
@@ -155,12 +171,15 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
                         </h2>
                     </div>
                 </div>
-                <button
-                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="p-2 rounded-lg hover:bg-muted transition-colors"
-                >
-                    {mobileMenuOpen ? <X size={24} className="text-foreground" /> : <Menu size={24} className="text-foreground" />}
-                </button>
+                <div className="flex items-center gap-2">
+                    <AdminNotificationBell userId={session?.userId} />
+                    <button
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        className="p-2 rounded-lg hover:bg-muted transition-colors"
+                    >
+                        {mobileMenuOpen ? <X size={24} className="text-foreground" /> : <Menu size={24} className="text-foreground" />}
+                    </button>
+                </div>
             </div>
 
             {/* Mobile Overlay */}
@@ -174,17 +193,22 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
             {/* Sidebar */}
             <aside className={`fixed inset-y-0 left-0 w-64 bg-background border-r flex flex-col p-6 z-50 transition-transform duration-300 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
                 } md:translate-x-0 md:z-20`}>
-                <div className="mb-10 flex items-center space-x-3 px-2 mt-16 md:mt-0">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold shrink-0">
-                        CN
+                <div className="mb-10 flex items-center justify-between px-2 mt-16 md:mt-0">
+                    <div className="flex items-center space-x-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold shrink-0">
+                            CN
+                        </div>
+                        <div className="flex flex-col">
+                            <h1 className="text-[11px] font-black uppercase tracking-widest text-primary/80 leading-tight">
+                                CAMPNAV
+                            </h1>
+                            <h2 className="text-lg font-bold tracking-tight hidden md:block">
+                                {userRole === "camp_manager" ? "Super Admin" : "Manager"}
+                            </h2>
+                        </div>
                     </div>
-                    <div className="flex flex-col">
-                        <h1 className="text-[11px] font-black uppercase tracking-widest text-primary/80 leading-tight">
-                            CAMPNAV
-                        </h1>
-                        <h2 className="text-lg font-bold tracking-tight hidden md:block">
-                            {userRole === "camp_manager" ? "Super Admin" : "Manager"}
-                        </h2>
+                    <div className="hidden md:block">
+                        <AdminNotificationBell userId={session?.userId} />
                     </div>
                 </div>
 
@@ -203,18 +227,44 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
                                 />
                             </button>
                             {openSections[section.title] && section.items.map((item) => (
-                                <a
-                                    key={item.name}
-                                    href={item.href}
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group ${isActive(item.href)
-                                        ? 'bg-primary text-primary-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                                        }`}
-                                >
-                                    <item.icon size={18} className="group-hover:scale-110 transition-transform" />
-                                    <span>{item.name}</span>
-                                </a>
+                                <div key={item.name}>
+                                    {item.href ? (
+                                        <a
+                                            href={item.href}
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group ${isActive(item.href)
+                                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                                }`}
+                                        >
+                                            <item.icon size={18} className="group-hover:scale-110 transition-transform" />
+                                            <span>{item.name}</span>
+                                        </a>
+                                    ) : (
+                                        <div className="flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground">
+                                            <item.icon size={18} />
+                                            <span>{item.name}</span>
+                                        </div>
+                                    )}
+                                    {item.children && (
+                                        <div className="ml-6 mt-1 space-y-1 border-l pl-3">
+                                            {item.children.map((child) => (
+                                                <a
+                                                    key={child.name}
+                                                    href={child.href}
+                                                    onClick={() => setMobileMenuOpen(false)}
+                                                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all group ${child.href && isActive(child.href)
+                                                        ? 'bg-primary text-primary-foreground shadow-sm'
+                                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                                        }`}
+                                                >
+                                                    <child.icon size={16} className="group-hover:scale-110 transition-transform" />
+                                                    <span>{child.name}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     ))}

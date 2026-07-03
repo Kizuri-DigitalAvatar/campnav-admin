@@ -25,9 +25,10 @@ const SUBCATEGORY_OPTIONS: Record<string, { value: string; label: string }[]> = 
     { value: "kitchen", label: "Kitchen" },
   ],
   staff: [
+    { value: "room_service", label: "Room Service" },
     { value: "housekeeping", label: "Housekeeping" },
     { value: "maintenance", label: "Maintenance" },
-    { value: "shop", label: "Shop" },
+    { value: "laundry", label: "Laundry" },
   ],
   resident: [
     { value: "guest", label: "Guest" },
