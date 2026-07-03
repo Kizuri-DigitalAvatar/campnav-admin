@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
@@ -47,11 +48,14 @@ import {
 import { Input } from "@/components/ui/input"
 
 export default function RequestsPage() {
+    const router = useRouter()
     const requests = useQuery(api.requests.list, {})
     const requestList = requests ?? []
+    const staffList = useQuery(api.users.listStaff, {})
     const updateStatus = useMutation(api.requests.updateStatus)
     const updateOfficeUse = useMutation(api.requests.updateOfficeUse)
     const removeRequest = useMutation(api.requests.remove)
+    const assignStaffToRequest = useMutation(api.tasks.assignStaffToRequest)
 
     const [selectedRequest, setSelectedRequest] = useState<any>(null)
     const [isDetailsOpen, setIsDetailsOpen] = useState(false)
@@ -65,11 +69,47 @@ export default function RequestsPage() {
     const [workOrderSent, setWorkOrderSent] = useState("")
     const [isSavingOffice, setIsSavingOffice] = useState(false)
 
+    // Staff picker + guest profile popup state
+    const [staffSearch, setStaffSearch] = useState("")
+    const [staffPickerOpen, setStaffPickerOpen] = useState(false)
+    const [selectedStaffId, setSelectedStaffId] = useState<any>(null)
+    const [isProfileOpen, setIsProfileOpen] = useState(false)
+
+    const guestProfile = useQuery(
+        api.users.getProfile,
+        selectedRequest?.userId ? { id: selectedRequest.userId } : "skip"
+    )
+
+    // The task behind this request: assigned staff, stages, updates, feedback
+    const requestTask = useQuery(
+        api.tasks.getByRequest,
+        selectedRequest?._id ? { requestId: selectedRequest._id } : "skip"
+    )
+
+    const filteredStaff = useMemo(() => {
+        const q = staffSearch.trim().toLowerCase()
+        const all = staffList || []
+        const matches = q
+            ? all.filter((s: any) =>
+                s.name?.toLowerCase().includes(q) ||
+                s.department?.toLowerCase().includes(q) ||
+                (s.assignedDuties || []).some((d: string) => d.toLowerCase().includes(q)))
+            : all
+        // Available staff first, then alphabetical
+        return [...matches].sort((a: any, b: any) => {
+            if (a.available !== b.available) return a.available ? -1 : 1
+            return (a.name || "").localeCompare(b.name || "")
+        })
+    }, [staffList, staffSearch])
+
     const openRequest = (req: any) => {
         setSelectedRequest(req)
         setUrgency(req.officeUse?.urgency || req.priority || "routine")
         setTradesperson(req.officeUse?.tradesperson || "")
         setWorkOrderSent(req.officeUse?.workOrderSent || "")
+        setStaffSearch("")
+        setStaffPickerOpen(false)
+        setSelectedStaffId(null)
         setIsDetailsOpen(true)
     }
 
@@ -83,11 +123,22 @@ export default function RequestsPage() {
                 tradesperson,
                 workOrderSent,
             })
+            // Assign the chosen staff member if the task has nobody on it yet
+            if (selectedStaffId && !requestTask?.staffId) {
+                await assignStaffToRequest({
+                    requestId: selectedRequest._id,
+                    staffId: selectedStaffId,
+                })
+            }
             setIsDetailsOpen(false)
-            toast.success("Request updated", { description: "Office use fields saved." })
+            toast.success("Request updated", {
+                description: selectedStaffId && !requestTask?.staffId
+                    ? `Assigned to ${tradesperson}. They have been notified.`
+                    : "Office use fields saved.",
+            })
         } catch (error) {
             console.error(error)
-            toast.error("Update failed", { description: "Could not save office use fields." })
+            toast.error("Update failed", { description: "Could not save the changes." })
         } finally {
             setIsSavingOffice(false)
         }
@@ -373,13 +424,27 @@ export default function RequestsPage() {
                                             Guest Information
                                         </h3>
                                         <div className="grid grid-cols-1 gap-2">
-                                            <div className="p-3 bg-muted/40 rounded-2xl border flex items-center gap-3">
-                                                <div className="p-2 bg-background rounded-lg border text-primary"><User size={14} /></div>
-                                                <div className="flex-1">
-                                                    <p className="text-[10px] font-black uppercase text-muted-foreground">User ID</p>
-                                                    <p className="text-xs font-bold truncate">{selectedRequest.userId}</p>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsProfileOpen(true)}
+                                                className="p-3 bg-muted/40 rounded-2xl border flex items-center gap-3 text-left w-full hover:border-primary/50 hover:bg-muted/60 transition-colors group/guest"
+                                            >
+                                                <div className="w-11 h-11 rounded-xl border-2 bg-background overflow-hidden flex items-center justify-center text-primary font-black shrink-0">
+                                                    {guestProfile?.imageUrl ? (
+                                                        <img src={guestProfile.imageUrl} alt={guestProfile.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        (guestProfile?.name || selectedRequest.userName || "?").charAt(0).toUpperCase()
+                                                    )}
                                                 </div>
-                                            </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] font-black uppercase text-muted-foreground">Requested By</p>
+                                                    <p className="text-sm font-bold truncate">{guestProfile?.name || selectedRequest.userName}</p>
+                                                    {guestProfile?.roomNumber && (
+                                                        <p className="text-[10px] text-muted-foreground font-bold">Room {guestProfile.roomNumber}</p>
+                                                    )}
+                                                </div>
+                                                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover/guest:text-primary transition-colors shrink-0" />
+                                            </button>
                                             {selectedRequest.accessPreference && (
                                                 <div className="p-3 bg-muted/40 rounded-2xl border flex items-center gap-3">
                                                     <div className="p-2 bg-background rounded-lg border text-primary"><CheckCircle2 size={14} /></div>
@@ -463,18 +528,100 @@ export default function RequestsPage() {
                                                 </Select>
                                             </div>
 
-                                            <div className="space-y-1.5">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Assigned Tradesperson</p>
-                                                <div className="relative">
-                                                    <Input 
-                                                        placeholder="e.g. John Doe (Electrician)" 
-                                                        value={tradesperson}
-                                                        onChange={(e) => setTradesperson(e.target.value)}
-                                                        className="h-11 rounded-xl border-2 bg-background font-bold text-xs pl-10"
-                                                    />
-                                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            {requestTask?.staff ? (
+                                                <div className="space-y-1.5">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Staff Working On This</p>
+                                                    <div className="p-3 bg-background rounded-2xl border-2 flex items-center gap-3">
+                                                        <div className="w-11 h-11 rounded-xl border-2 bg-muted overflow-hidden flex items-center justify-center text-primary font-black shrink-0">
+                                                            {requestTask.staff.imageUrl ? (
+                                                                <img src={requestTask.staff.imageUrl} alt={requestTask.staff.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                requestTask.staff.name?.charAt(0).toUpperCase()
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-bold truncate">{requestTask.staff.name}</p>
+                                                            <p className="text-[9px] text-muted-foreground font-bold uppercase truncate">
+                                                                {(requestTask.staff.assignedDuties || []).map((d: string) => d.replace("_", " ")).join(", ") || requestTask.staff.department?.replace("_", " ") || "Staff"}
+                                                            </p>
+                                                        </div>
+                                                        <span className={`text-[9px] font-black uppercase tracking-widest shrink-0 ${requestTask.staff.isOnSite ? "text-emerald-500" : "text-muted-foreground/50"}`}>
+                                                            {requestTask.staff.isOnSite ? "● On site" : "○ Off site"}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            ) : (
+                                                <div className="space-y-1.5">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Select Staff</p>
+                                                    <div className="relative">
+                                                        <Input
+                                                            placeholder={tradesperson || "Search staff by name or duty..."}
+                                                            value={staffPickerOpen ? staffSearch : tradesperson}
+                                                            onChange={(e) => {
+                                                                setStaffSearch(e.target.value)
+                                                                setStaffPickerOpen(true)
+                                                            }}
+                                                            onFocus={() => {
+                                                                setStaffSearch("")
+                                                                setStaffPickerOpen(true)
+                                                            }}
+                                                            className="h-11 rounded-xl border-2 bg-background font-bold text-xs pl-10"
+                                                        />
+                                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
+                                                        {staffPickerOpen && (
+                                                            <>
+                                                                <div className="fixed inset-0 z-40" onClick={() => setStaffPickerOpen(false)} />
+                                                                <div className="absolute left-0 right-0 top-12 z-50 bg-background border-2 rounded-2xl shadow-2xl overflow-hidden">
+                                                                    <div className="max-h-56 overflow-y-auto divide-y">
+                                                                        {staffList === undefined ? (
+                                                                            <div className="p-4 text-center">
+                                                                                <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+                                                                            </div>
+                                                                        ) : filteredStaff.length === 0 ? (
+                                                                            <p className="p-4 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                                                                No staff found
+                                                                            </p>
+                                                                        ) : (
+                                                                            filteredStaff.map((staff: any) => (
+                                                                                <button
+                                                                                    key={staff._id}
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setTradesperson(staff.name)
+                                                                                        setSelectedStaffId(staff._id)
+                                                                                        setStaffPickerOpen(false)
+                                                                                        setStaffSearch("")
+                                                                                    }}
+                                                                                    className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted/50 transition-colors ${tradesperson === staff.name ? "bg-primary/5" : ""}`}
+                                                                                >
+                                                                                    <div className="w-8 h-8 rounded-lg border bg-muted overflow-hidden flex items-center justify-center text-primary text-xs font-black shrink-0">
+                                                                                        {staff.imageUrl ? (
+                                                                                            <img src={staff.imageUrl} alt={staff.name} className="w-full h-full object-cover" />
+                                                                                        ) : (
+                                                                                            staff.name?.charAt(0).toUpperCase()
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <p className="text-xs font-bold truncate">{staff.name}</p>
+                                                                                        <p className="text-[9px] text-muted-foreground font-bold uppercase truncate">
+                                                                                            {(staff.assignedDuties || []).map((d: string) => d.replace("_", " ")).join(", ") || staff.department?.replace("_", " ") || "Staff"}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <span className={`flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest shrink-0 ${staff.available ? "text-emerald-500" : "text-amber-500"}`}>
+                                                                                        <span className={`w-1.5 h-1.5 rounded-full ${staff.available ? "bg-emerald-500" : "bg-amber-500"}`} />
+                                                                                        {staff.available ? "Available" : "Busy"}
+                                                                                    </span>
+                                                                                </button>
+                                                                            ))
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div className="space-y-1.5">
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Work Order Status</p>
@@ -496,6 +643,86 @@ export default function RequestsPage() {
                                         </Button>
                                     </section>
 
+                                    {requestTask?.staff && (
+                                        <section className="space-y-4 p-6 bg-muted/20 rounded-[2rem] border-2">
+                                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                                <div className="w-1.5 h-4 bg-primary rounded-full" />
+                                                Task Progress
+                                            </h3>
+
+                                            {/* Stage timeline */}
+                                            <div className="space-y-0">
+                                                {[
+                                                    { label: "Assigned", at: requestTask.assignedAt },
+                                                    { label: "Accepted by staff", at: requestTask.acknowledgedAt },
+                                                    { label: "Work started", at: requestTask.startedAt },
+                                                    { label: "Completed", at: requestTask.completedAt },
+                                                ].map((stage, i, arr) => (
+                                                    <div key={stage.label} className="flex gap-3">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className={`w-3 h-3 rounded-full border-2 shrink-0 ${stage.at ? "bg-primary border-primary" : "bg-muted border-border"}`} />
+                                                            {i < arr.length - 1 && (
+                                                                <div className={`w-0.5 flex-1 min-h-[16px] ${stage.at && arr[i + 1].at ? "bg-primary" : "bg-border"}`} />
+                                                            )}
+                                                        </div>
+                                                        <div className="pb-3 -mt-0.5">
+                                                            <p className={`text-xs font-bold ${stage.at ? "" : "text-muted-foreground/50"}`}>{stage.label}</p>
+                                                            {stage.at && (
+                                                                <p className="text-[10px] text-muted-foreground">
+                                                                    {new Date(stage.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Staff updates */}
+                                            {requestTask.updates?.length > 0 && (
+                                                <div className="space-y-2 pt-2 border-t">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Staff Updates</p>
+                                                    {requestTask.updates.map((update: any, i: number) => (
+                                                        <div key={i} className="p-3 bg-background rounded-xl border space-y-2">
+                                                            <p className="text-[10px] text-muted-foreground font-bold">
+                                                                {new Date(update.timestamp).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                                            </p>
+                                                            {update.text && <p className="text-xs font-medium italic">"{update.text}"</p>}
+                                                            {update.imageUrls?.length > 0 && (
+                                                                <div className="flex gap-2 flex-wrap">
+                                                                    {update.imageUrls.map((url: string, j: number) => (
+                                                                        <img
+                                                                            key={j}
+                                                                            src={url}
+                                                                            className="w-14 h-14 rounded-lg object-cover border cursor-zoom-in"
+                                                                            onClick={() => window.open(url)}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {update.audioUrl && (
+                                                                <audio controls src={update.audioUrl} className="w-full h-8" />
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Resident feedback */}
+                                            {requestTask.rating !== undefined && (
+                                                <div className="pt-2 border-t space-y-1.5">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Resident Feedback</p>
+                                                    <p className="text-sm text-amber-500 tracking-widest">
+                                                        {"★".repeat(requestTask.rating)}{"☆".repeat(Math.max(0, 5 - requestTask.rating))}
+                                                        <span className="ml-2 text-xs text-foreground font-bold">{requestTask.rating}/5</span>
+                                                    </p>
+                                                    {requestTask.feedback && (
+                                                        <p className="text-xs font-medium italic text-foreground/80">"{requestTask.feedback}"</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </section>
+                                    )}
+
                                     <div className="flex gap-2">
                                         <Button variant="outline" className="flex-1 rounded-2xl h-12 border-2 text-[10px] font-black uppercase tracking-widest" onClick={() => setIsDetailsOpen(false)}>Close</Button>
                                         <Button 
@@ -515,6 +742,78 @@ export default function RequestsPage() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Guest Profile Popup */}
+            <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+                <DialogContent className="sm:max-w-sm rounded-[2rem] border-4">
+                    <DialogHeader>
+                        <DialogTitle className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
+                            Guest Profile
+                        </DialogTitle>
+                    </DialogHeader>
+                    {guestProfile === undefined ? (
+                        <div className="py-10 text-center">
+                            <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                        </div>
+                    ) : guestProfile === null ? (
+                        <p className="py-8 text-center text-xs text-muted-foreground">User not found — the account may have been deleted.</p>
+                    ) : (
+                        <div className="space-y-5">
+                            <div className="flex flex-col items-center text-center space-y-3">
+                                <div className="w-20 h-20 rounded-2xl border-2 bg-muted overflow-hidden flex items-center justify-center text-primary text-2xl font-black">
+                                    {guestProfile.imageUrl ? (
+                                        <img src={guestProfile.imageUrl} alt={guestProfile.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        guestProfile.name?.charAt(0).toUpperCase()
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold">{guestProfile.name}</h3>
+                                    <Badge variant="secondary" className="rounded-lg text-[9px] font-black uppercase mt-1">
+                                        {(guestProfile.userSubcategory || guestProfile.role || "resident").replace("_", " ")}
+                                    </Badge>
+                                </div>
+                            </div>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex justify-between p-3 bg-muted/40 rounded-xl border">
+                                    <span className="font-black uppercase text-[10px] text-muted-foreground">Email</span>
+                                    <span className="font-bold truncate ml-3">{guestProfile.email}</span>
+                                </div>
+                                {guestProfile.roomNumber && (
+                                    <div className="flex justify-between p-3 bg-muted/40 rounded-xl border">
+                                        <span className="font-black uppercase text-[10px] text-muted-foreground">Room</span>
+                                        <span className="font-bold">{guestProfile.roomNumber}</span>
+                                    </div>
+                                )}
+                                {guestProfile.phoneNumber && (
+                                    <div className="flex justify-between p-3 bg-muted/40 rounded-xl border">
+                                        <span className="font-black uppercase text-[10px] text-muted-foreground">Phone</span>
+                                        <span className="font-bold">{guestProfile.phoneNumber}</span>
+                                    </div>
+                                )}
+                                {guestProfile.durationStart && (
+                                    <div className="flex justify-between p-3 bg-muted/40 rounded-xl border">
+                                        <span className="font-black uppercase text-[10px] text-muted-foreground">Visit</span>
+                                        <span className="font-bold">
+                                            {new Date(guestProfile.durationStart).toLocaleDateString()} — {guestProfile.durationEnd ? new Date(guestProfile.durationEnd).toLocaleDateString() : "?"}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                            <Button
+                                onClick={() => {
+                                    setIsProfileOpen(false)
+                                    setIsDetailsOpen(false)
+                                    router.push("/users")
+                                }}
+                                className="w-full h-11 rounded-xl font-black uppercase tracking-widest text-[10px]"
+                            >
+                                Open Users Page
+                            </Button>
                         </div>
                     )}
                 </DialogContent>
