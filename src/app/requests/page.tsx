@@ -394,29 +394,53 @@ export default function RequestsPage() {
 
             {/* Request Details & Office Use Modal */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] border-4 overflow-hidden p-0">
+                <DialogContent className="sm:max-w-3xl rounded-[2rem] border-2 overflow-hidden p-0 gap-0 shadow-2xl">
                     {selectedRequest && (
-                        <div className="flex flex-col h-[85vh] md:h-auto overflow-y-auto">
-                            <div className="bg-primary p-8 text-primary-foreground relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-8 opacity-10">
+                        <div className="flex flex-col max-h-[88vh]">
+                            {/* Header */}
+                            <div className="shrink-0 relative bg-gradient-to-br from-primary via-primary to-primary/70 px-6 md:px-8 pt-7 pb-6 text-primary-foreground overflow-hidden">
+                                <div className="absolute -right-4 -bottom-10 opacity-[0.08] pointer-events-none [&_svg]:h-44 [&_svg]:w-44">
                                     {getIcon(selectedRequest.type)}
                                 </div>
-                                <div className="relative z-10">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <p className="text-[10px] font-black uppercase tracking-[.3em] opacity-80">{selectedRequest.type.replace("_", " ")}</p>
-                                        {selectedRequest.category && (
-                                            <>
-                                                <div className="w-1 h-1 rounded-full bg-white opacity-40" />
-                                                <p className="text-[10px] font-black uppercase tracking-[.3em]">{selectedRequest.category}</p>
-                                            </>
-                                        )}
+                                <div className="relative z-10 space-y-3.5">
+                                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="inline-flex items-center gap-1.5 bg-white/15 border border-white/20 backdrop-blur-sm rounded-full px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.2em]">
+                                                {getIcon(selectedRequest.type)}
+                                                {selectedRequest.type.replace("_", " ")}
+                                            </span>
+                                            {selectedRequest.category && (
+                                                <span className="bg-white/10 border border-white/15 rounded-full px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] opacity-90">
+                                                    {selectedRequest.category}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.2em]">
+                                            <span className={`w-2 h-2 rounded-full ${
+                                                selectedRequest.status === "completed" ? "bg-emerald-300" :
+                                                selectedRequest.status === "in_progress" ? "bg-amber-300" :
+                                                selectedRequest.status === "rejected" ? "bg-red-300" : "bg-sky-300"
+                                            }`} />
+                                            {selectedRequest.status.replace("_", " ")}
+                                        </span>
                                     </div>
-                                    <h2 className="text-3xl font-black tracking-tighter italic uppercase">{selectedRequest.roomNumber} Request</h2>
-                                    <p className="text-sm font-medium opacity-90 mt-1">Submitted by {selectedRequest.userName} at {new Date(selectedRequest.createdAt).toLocaleTimeString()}</p>
+                                    <div>
+                                        <h2 className="text-3xl md:text-4xl font-black tracking-tighter uppercase leading-none">
+                                            {selectedRequest.roomNumber} Request
+                                        </h2>
+                                        <p className="text-xs font-medium opacity-80 mt-2.5 flex items-center gap-1.5 flex-wrap">
+                                            <Clock className="h-3.5 w-3.5" />
+                                            Submitted by <span className="font-bold opacity-100">{selectedRequest.userName}</span>
+                                            <span className="opacity-50">·</span>
+                                            {new Date(selectedRequest.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Scrollable body */}
+                            <div className="flex-1 overflow-y-auto bg-background">
+                            <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-6">
                                     <section className="space-y-3">
                                         <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
@@ -462,7 +486,7 @@ export default function RequestsPage() {
                                             <div className="w-1 h-3 bg-primary rounded-full" />
                                             Request Details
                                         </h3>
-                                        <div className="p-4 bg-muted/40 rounded-2xl border-2 space-y-3">
+                                        <div className="p-4 bg-muted/30 rounded-2xl border space-y-3">
                                             {selectedRequest.subCategory && (
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Badge className="rounded-lg font-black text-[9px] uppercase">{selectedRequest.category}</Badge>
@@ -473,7 +497,9 @@ export default function RequestsPage() {
                                             {selectedRequest.applianceModel && (
                                                 <p className="text-[10px] font-black text-primary uppercase">Appliance: <span className="text-foreground italic">{selectedRequest.applianceModel}</span></p>
                                             )}
-                                            <p className="text-xs font-medium leading-relaxed italic text-foreground/80">"{selectedRequest.description}"</p>
+                                            <blockquote className="text-xs font-medium leading-relaxed italic text-foreground/80 border-l-2 border-primary/40 pl-3 py-0.5">
+                                                "{selectedRequest.description}"
+                                            </blockquote>
                                             
                                             {selectedRequest.laundryItems && (
                                                 <div className="mt-4 pt-4 border-t-2 space-y-2">
@@ -504,7 +530,7 @@ export default function RequestsPage() {
                                 </div>
 
                                 <div className="space-y-6">
-                                    <section className="space-y-4 p-6 bg-primary/5 rounded-[2rem] border-2 border-primary/10 relative overflow-hidden">
+                                    <section className="space-y-4 p-6 bg-primary/5 rounded-3xl border-2 border-primary/10 relative overflow-hidden">
                                         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                                             <ClipboardCheck size={80} className="text-primary" />
                                         </div>
@@ -644,7 +670,7 @@ export default function RequestsPage() {
                                     </section>
 
                                     {requestTask?.staff && (
-                                        <section className="space-y-4 p-6 bg-muted/20 rounded-[2rem] border-2">
+                                        <section className="space-y-4 p-6 bg-muted/20 rounded-3xl border-2">
                                             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                                                 <div className="w-1.5 h-4 bg-primary rounded-full" />
                                                 Task Progress
@@ -723,24 +749,34 @@ export default function RequestsPage() {
                                         </section>
                                     )}
 
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" className="flex-1 rounded-2xl h-12 border-2 text-[10px] font-black uppercase tracking-widest" onClick={() => setIsDetailsOpen(false)}>Close</Button>
-                                        <Button 
-                                            variant="destructive" 
-                                            className="h-12 w-12 rounded-2xl p-0 border-2 shadow-lg shadow-destructive/10"
-                                            onClick={() => {
-                                                if (confirm("Permanently delete this request?")) {
-                                                    removeRequest({ id: selectedRequest._id })
-                                                        .then(() => toast.success("Request deleted"))
-                                                        .catch(() => toast.error("Delete failed"))
-                                                    setIsDetailsOpen(false);
-                                                }
-                                            }}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
                                 </div>
+                            </div>
+                            </div>
+
+                            {/* Footer actions */}
+                            <div className="shrink-0 border-t bg-muted/40 backdrop-blur-sm px-6 md:px-8 py-4 flex items-center justify-between gap-3">
+                                <Button
+                                    variant="ghost"
+                                    className="rounded-xl h-10 px-4 text-destructive hover:bg-destructive/10 hover:text-destructive text-[10px] font-black uppercase tracking-widest gap-2"
+                                    onClick={() => {
+                                        if (confirm("Permanently delete this request?")) {
+                                            removeRequest({ id: selectedRequest._id })
+                                                .then(() => toast.success("Request deleted"))
+                                                .catch(() => toast.error("Delete failed"))
+                                            setIsDetailsOpen(false);
+                                        }
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="rounded-xl h-10 px-10 border-2 text-[10px] font-black uppercase tracking-widest"
+                                    onClick={() => setIsDetailsOpen(false)}
+                                >
+                                    Close
+                                </Button>
                             </div>
                         </div>
                     )}
