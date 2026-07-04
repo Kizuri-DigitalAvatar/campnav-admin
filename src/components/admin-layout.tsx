@@ -6,6 +6,7 @@ import { LogoutButton } from "@/components/logout-button";
 import { AdminNotificationBell } from "@/components/admin-notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DataPrefetcher } from "@/components/data-prefetcher";
+import { AdminNotificationListener } from "@/components/admin-notification-listener";
 import {
     LayoutDashboard,
     Users,
@@ -159,6 +160,8 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
         <div className="flex min-h-screen bg-background">
             {/* Warm all tab data on login so navigation is instant */}
             <DataPrefetcher />
+            {/* Live toasts for support messages and admin alerts */}
+            <AdminNotificationListener userId={session?.userId} />
             {/* Mobile Header */}
             <div className="md:hidden fixed top-0 left-0 right-0 h-16 glass-panel border-b flex items-center justify-between px-4 z-30">
                 <div className="flex items-center space-x-3">
