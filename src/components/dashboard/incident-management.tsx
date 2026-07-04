@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery, useMutation } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { AlertTriangle, Plus, Search, Filter, Download, Eye, Edit, CheckCircle, XCircle, Clock, MapPin, User, Calendar, FileText, Camera } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@convex/_generated/api"

@@ -7,7 +7,15 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async redirects() {
+    return [
+      {
+        source: "/tasks",
+        destination: "/requests",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);

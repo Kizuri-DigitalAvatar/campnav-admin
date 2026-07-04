@@ -4,6 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
 import { AdminNotificationBell } from "@/components/admin-notification-bell";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { DataPrefetcher } from "@/components/data-prefetcher";
 import {
     LayoutDashboard,
     Users,
@@ -44,8 +46,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
         items: [
             { name: 'Dashboard', href: '/', icon: LayoutDashboard },
             { name: 'Users', href: '/users', icon: Users },
-            { name: 'Requests', href: '/requests', icon: Bell },
-            { name: 'Tasks', href: '/tasks', icon: ClipboardList },
+            { name: 'Requests / Tasks', href: '/requests', icon: ClipboardList },
             { name: 'Facilities', href: '/facilities', icon: Dumbbell },
             { name: 'Reports', href: '/reports', icon: MessageSquare },
             { name: 'Preventive Maintenance', href: '/maintenance/preventive', icon: ClipboardCheck },
@@ -156,14 +157,16 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
 
     return (
         <div className="flex min-h-screen bg-background">
+            {/* Warm all tab data on login so navigation is instant */}
+            <DataPrefetcher />
             {/* Mobile Header */}
-            <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b flex items-center justify-between px-4 z-30">
+            <div className="md:hidden fixed top-0 left-0 right-0 h-16 glass-panel border-b flex items-center justify-between px-4 z-30">
                 <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-xl tile-3d-primary text-primary-foreground font-extrabold text-sm">
                         CN
                     </div>
                     <div className="flex flex-col">
-                        <h1 className="text-[10px] font-black uppercase tracking-widest text-primary/80 leading-tight">
+                        <h1 className="text-[10px] font-black uppercase tracking-widest text-primary leading-tight">
                             CAMPNAV
                         </h1>
                         <h2 className="text-sm font-bold tracking-tight">
@@ -172,6 +175,7 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <ThemeToggle />
                     <AdminNotificationBell userId={session?.userId} />
                     <button
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -185,21 +189,21 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
             {/* Mobile Overlay */}
             {mobileMenuOpen && (
                 <div
-                    className="md:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+                    className="md:hidden fixed inset-0 bg-foreground/25 backdrop-blur-md z-40"
                     onClick={() => setMobileMenuOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
-            <aside className={`fixed inset-y-0 left-0 w-64 bg-background border-r flex flex-col p-6 z-50 transition-transform duration-300 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+            <aside className={`fixed inset-y-0 left-0 w-64 glass-panel border-r shadow-card flex flex-col p-6 z-50 transition-transform duration-300 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
                 } md:translate-x-0 md:z-20`}>
                 <div className="mb-10 flex items-center justify-between px-2 mt-16 md:mt-0">
                     <div className="flex items-center space-x-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold shrink-0">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-xl tile-3d-primary text-primary-foreground font-extrabold shrink-0">
                             CN
                         </div>
                         <div className="flex flex-col">
-                            <h1 className="text-[11px] font-black uppercase tracking-widest text-primary/80 leading-tight">
+                            <h1 className="text-[11px] font-black uppercase tracking-widest text-primary leading-tight">
                                 CAMPNAV
                             </h1>
                             <h2 className="text-lg font-bold tracking-tight hidden md:block">
@@ -232,9 +236,9 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
                                         <a
                                             href={item.href}
                                             onClick={() => setMobileMenuOpen(false)}
-                                            className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group ${isActive(item.href)
-                                                ? 'bg-primary text-primary-foreground shadow-sm'
-                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                            className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive(item.href)
+                                                ? 'bg-primary text-primary-foreground shadow-primary-glow'
+                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted hover:translate-x-0.5'
                                                 }`}
                                         >
                                             <item.icon size={18} className="group-hover:scale-110 transition-transform" />
@@ -253,9 +257,9 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
                                                     key={child.name}
                                                     href={child.href}
                                                     onClick={() => setMobileMenuOpen(false)}
-                                                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all group ${child.href && isActive(child.href)
-                                                        ? 'bg-primary text-primary-foreground shadow-sm'
-                                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group ${child.href && isActive(child.href)
+                                                        ? 'bg-primary text-primary-foreground shadow-primary-glow'
+                                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted hover:translate-x-0.5'
                                                         }`}
                                                 >
                                                     <child.icon size={16} className="group-hover:scale-110 transition-transform" />
@@ -274,19 +278,22 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
                     </div>
                 </nav>
 
-                <div className="mt-auto pt-6 border-t">
-                    <div className="p-4 rounded-xl bg-muted/50 border">
+                <div className="mt-auto pt-6 border-t flex items-stretch gap-2">
+                    <div className="p-4 rounded-2xl tile-3d flex-1 min-w-0">
                         <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1 tracking-wider">System Status</div>
                         <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_oklch(0.696_0.17_162.48)]" />
-                            <span className="text-xs font-medium">Deployment Active</span>
+                            <span className="text-xs font-medium truncate">Deployment Active</span>
                         </div>
+                    </div>
+                    <div className="hidden md:flex items-center">
+                        <ThemeToggle className="h-full" />
                     </div>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 ml-0 md:ml-64 min-h-screen pt-16 md:pt-0">
+            <main className="flex-1 ml-0 md:ml-64 min-h-screen pt-16 md:pt-0 dot-grid">
                 <div className="max-w-7xl mx-auto py-4 md:py-8 px-4 md:px-8">
                     {children}
                 </div>

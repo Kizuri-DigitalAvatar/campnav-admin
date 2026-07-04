@@ -1,7 +1,8 @@
 "use client"
 
 import { FormEvent, useMemo, useState } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { CalendarClock, Plane, Plus } from "lucide-react"
 
 import { Card } from "@/components/ui/card"

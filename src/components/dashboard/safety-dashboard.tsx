@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { Shield, AlertTriangle, CheckCircle, XCircle, TrendingUp, TrendingDown, Activity, FileCheck, Bell, Calendar } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Lock, AlertCircle, Loader2 } from "lucide-react"
 import { login } from "@/lib/auth"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function LoginPage() {
     const [email, setEmail] = useState("")
@@ -33,11 +34,25 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+        <div className="min-h-screen flex items-center justify-center p-6 bg-background dot-grid relative overflow-hidden">
+            <div className="absolute top-6 right-6 z-10">
+                <ThemeToggle />
+            </div>
+
+            {/* Floating decorative tiles, like the reference hero */}
+            <div className="absolute top-[14%] left-[12%] w-16 h-16 rounded-2xl tile-3d hidden lg:flex items-center justify-center opacity-80 animate-float" style={{ "--tile-rot": "-8deg" } as React.CSSProperties} aria-hidden="true">
+                <Lock size={24} className="text-primary" />
+            </div>
+            <div className="absolute bottom-[18%] right-[14%] w-14 h-14 rounded-2xl tile-3d hidden lg:flex items-center justify-center opacity-80 animate-float" style={{ "--tile-rot": "10deg", animationDelay: "-2s" } as React.CSSProperties} aria-hidden="true">
+                <div className="w-6 h-6 rounded-lg tile-3d-primary" />
+            </div>
+            <div className="absolute top-[22%] right-[20%] w-10 h-10 rounded-xl tile-3d hidden lg:block opacity-60 animate-float" style={{ "--tile-rot": "6deg", animationDelay: "-4s" } as React.CSSProperties} aria-hidden="true" />
+            <div className="absolute bottom-[24%] left-[18%] w-8 h-8 rounded-lg tile-3d hidden lg:block opacity-60 animate-float" style={{ "--tile-rot": "-12deg", animationDelay: "-1s" } as React.CSSProperties} aria-hidden="true" />
+
             <div className="w-full max-w-sm relative">
                 {/* Logo Area */}
                 <div className="flex flex-col items-center mb-10 space-y-4">
-                    <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground font-extrabold text-3xl shadow-xl shadow-primary/10">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-2xl tile-3d-primary text-primary-foreground font-extrabold text-2xl">
                         CN
                     </div>
                     <div className="text-center">
@@ -49,7 +64,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Login Card */}
-                <div className="bg-card border rounded-3xl p-8 shadow-sm">
+                <div className="glass-card rounded-3xl p-8 shadow-float">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2">
@@ -60,7 +75,7 @@ export default function LoginPage() {
                                     type="email"
                                     required
                                     autoFocus
-                                    className="w-full px-4 h-12 rounded-xl border bg-muted/50 focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                    className="w-full px-4 h-12 rounded-xl border border-input bg-card shadow-[inset_0_1px_2px_rgb(16_24_40_/_0.04)] focus:border-ring focus:ring-4 focus:ring-ring/15 transition-all duration-200 outline-none"
                                     placeholder="your@email.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -79,7 +94,7 @@ export default function LoginPage() {
                                     <input
                                         type="password"
                                         required
-                                        className="w-full pl-11 h-12 rounded-xl border bg-muted/50 focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                        className="w-full pl-11 h-12 rounded-xl border border-input bg-card shadow-[inset_0_1px_2px_rgb(16_24_40_/_0.04)] focus:border-ring focus:ring-4 focus:ring-ring/15 transition-all duration-200 outline-none"
                                         placeholder="••••••••"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -99,7 +114,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-primary text-primary-foreground font-bold h-12 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98]"
+                            className="w-full bg-primary text-primary-foreground font-bold h-12 rounded-xl flex items-center justify-center gap-2 shadow-primary-glow hover:brightness-110 hover:-translate-y-px transition-all duration-200 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
                         >
                             {isLoading ? (
                                 <Loader2 size={20} className="animate-spin" />

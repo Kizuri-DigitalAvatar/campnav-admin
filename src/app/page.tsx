@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import Link from "next/link"
 import {
   Users, ShoppingBag, Activity, Bell,
@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@convex/_generated/api"
 
 // Donut / pie segment colors
-const COLORS = ['#18181b', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1']
+const COLORS = ['#2b6ff0', '#38bdf8', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1']
 
 // Semantic status colors
 const C_PENDING     = '#f59e0b'
@@ -25,10 +25,11 @@ const C_COMPLETED   = '#10b981'
 const C_BAD         = '#ef4444'
 
 const tooltipContentStyle = {
-  backgroundColor: 'oklch(1 0 0)',
-  border: '1px solid oklch(0.922 0 0)',
+  backgroundColor: 'oklch(0.998 0.001 90 / 0.92)',
+  backdropFilter: 'blur(12px)',
+  border: '1px solid oklch(0.908 0.005 84)',
   borderRadius: '16px',
-  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+  boxShadow: '0 2px 3px rgb(16 24 40 / 0.04), 0 12px 28px -6px rgb(16 24 40 / 0.16)',
   fontSize: '12px',
   fontWeight: 'bold',
 }
@@ -77,13 +78,13 @@ function ChartCard({
   children: React.ReactNode
 }) {
   return (
-    <div className="bg-card border rounded-3xl overflow-hidden shadow-sm">
+    <div className="glass-card rounded-3xl overflow-hidden">
       {/* Colored accent bar */}
-      <div className="h-1 w-full" style={{ background: accentColor }} />
+      <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}55)` }} />
       <div className="p-6 md:p-7">
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl" style={{ background: `${accentColor}18` }}>
+            <div className="p-2 rounded-xl tile-3d">
               <Icon size={16} style={{ color: accentColor }} />
             </div>
             <div>
@@ -134,12 +135,12 @@ function DonutCard({
   children: React.ReactNode
 }) {
   return (
-    <div className="bg-card border rounded-3xl overflow-hidden shadow-sm">
-      <div className="h-1 w-full" style={{ background: accentColor }} />
+    <div className="glass-card rounded-3xl overflow-hidden">
+      <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}55)` }} />
       <div className="p-6 md:p-7">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl" style={{ background: `${accentColor}18` }}>
+            <div className="p-2 rounded-xl tile-3d">
               <Icon size={16} style={{ color: accentColor }} />
             </div>
             <div>
@@ -341,13 +342,16 @@ export default function Home() {
       {/* ── Header ────────────────────────────────────────────────── */}
       <header className="flex items-end justify-between">
         <div>
-          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-muted-foreground mb-1">
+          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-primary mb-1">
             Real-time Operations
           </p>
-          <h2 className="text-3xl font-black tracking-tighter">CampNav Analytics</h2>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tighter">
+            CampNav Analytics{' '}
+            <span className="text-muted-foreground/50 font-bold">at a glance</span>
+          </h2>
         </div>
-        <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-muted-foreground tile-3d px-3.5 py-2 rounded-full">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_oklch(0.696_0.17_162.48)]" />
           LIVE
         </div>
       </header>
@@ -357,13 +361,13 @@ export default function Home() {
         {kpiCards.map((stat, i) => (
           <div
             key={i}
-            className="bg-card border rounded-3xl overflow-hidden shadow-sm group hover:shadow-md transition-shadow"
+            className="glass-card card-lift rounded-3xl overflow-hidden group"
           >
             {/* top accent stripe */}
-            <div className="h-[3px] w-full" style={{ background: stat.accent }} />
+            <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, ${stat.accent}, ${stat.accent}55)` }} />
             <div className="p-5 flex flex-col gap-5">
               <div className="flex items-center justify-between">
-                <div className="p-2.5 rounded-2xl" style={{ background: stat.iconBg }}>
+                <div className="p-2.5 rounded-2xl tile-3d group-hover:-translate-y-0.5 transition-transform duration-300">
                   <stat.icon size={18} style={{ color: stat.accent }} />
                 </div>
                 <ArrowUpRight size={14} className="text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
@@ -375,7 +379,7 @@ export default function Home() {
                 {stat.loading ? (
                   <Skeleton className="h-8 w-20 mb-1" />
                 ) : (
-                  <p className="text-3xl font-black font-mono tabular-nums" style={{ color: stat.accent }}>
+                  <p className="text-3xl font-black font-mono tabular-nums text-foreground">
                     {stat.value ?? 0}
                   </p>
                 )}
@@ -486,7 +490,7 @@ export default function Home() {
         </div>
 
         {/* Task multi-metric strip */}
-        <div className="bg-card border rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
+        <div className="glass-card rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
           <div>
             <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Task Breakdown</p>
             <MetricRow
@@ -538,7 +542,7 @@ export default function Home() {
             title="Order Sources"
             icon={PieIcon}
             tag="SOURCE_SPLIT"
-            accentColor="#18181b"
+            accentColor="#2b6ff0"
             loading={orders === undefined}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -592,7 +596,7 @@ export default function Home() {
         </div>
 
         {/* Commerce multi-metric strip */}
-        <div className="bg-card border rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
+        <div className="glass-card rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
           <div>
             <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Order Pipeline</p>
             <MetricRow
@@ -730,7 +734,7 @@ export default function Home() {
 
         {/* Occupancy + Maintenance multi-metric strip */}
         <div className="grid gap-5 md:grid-cols-2">
-          <div className="bg-card border rounded-3xl p-6">
+          <div className="glass-card rounded-3xl p-6">
             <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Rooms at a Glance</p>
             <MetricRow
               loading={occupancyStats === undefined}
@@ -741,7 +745,7 @@ export default function Home() {
               ]}
             />
           </div>
-          <div className="bg-card border rounded-3xl p-6">
+          <div className="glass-card rounded-3xl p-6">
             <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Maintenance Pipeline</p>
             <MetricRow
               loading={maintenanceStats === undefined}
@@ -777,14 +781,11 @@ export default function Home() {
             iconBg: 'rgba(99,102,241,0.1)',
           },
         ].map((item, i) => (
-          <div key={i} className="bg-card border rounded-3xl overflow-hidden shadow-sm flex flex-col">
-            <div className="h-[3px] w-full" style={{ background: item.accent }} />
+          <div key={i} className="glass-card card-lift rounded-3xl overflow-hidden flex flex-col">
+            <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, ${item.accent}, ${item.accent}55)` }} />
             <div className="p-7 flex flex-col justify-between flex-1">
               <div>
-                <div
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5"
-                  style={{ background: item.iconBg }}
-                >
+                <div className="w-11 h-11 rounded-2xl tile-3d flex items-center justify-center mb-5">
                   <item.icon size={22} style={{ color: item.accent }} />
                 </div>
                 <h4 className="text-lg font-black mb-2 tracking-tight">{item.title}</h4>
@@ -792,8 +793,11 @@ export default function Home() {
               </div>
               <Link
                 href={item.href}
-                className="block w-full mt-7 font-black py-3.5 rounded-xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity text-center text-white"
-                style={{ background: item.accent }}
+                className="block w-full mt-7 font-black py-3.5 rounded-xl text-[10px] uppercase tracking-widest hover:opacity-90 hover:-translate-y-px transition-all text-center text-white"
+                style={{
+                  background: `linear-gradient(180deg, ${item.accent}, color-mix(in srgb, ${item.accent} 85%, black))`,
+                  boxShadow: `inset 0 1px 0 rgb(255 255 255 / 0.2), 0 8px 18px -4px color-mix(in srgb, ${item.accent} 55%, transparent)`,
+                }}
               >
                 {item.button}
               </Link>
@@ -803,10 +807,13 @@ export default function Home() {
 
         {/* Population card */}
         <div
-          className="rounded-3xl overflow-hidden shadow-lg flex flex-col"
-          style={{ background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)' }}
+          className="rounded-3xl overflow-hidden shadow-float flex flex-col"
+          style={{
+            background: 'linear-gradient(145deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%)',
+            boxShadow: 'inset 0 1px 0 rgb(255 255 255 / 0.2), 0 2px 3px rgb(16 24 40 / 0.06), 0 24px 48px -12px rgb(37 99 235 / 0.45)',
+          }}
         >
-          <div className="h-[3px] w-full" style={{ background: 'linear-gradient(90deg, #8b5cf6, #3b82f6, #10b981)' }} />
+          <div className="h-[3px] w-full" style={{ background: 'linear-gradient(90deg, #93c5fd, #38bdf8, #10b981)' }} />
           <div className="p-7 flex flex-col justify-between flex-1">
             <div>
               <div className="flex items-center gap-2 mb-5">
@@ -832,7 +839,7 @@ export default function Home() {
               <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-1000"
-                  style={{ width: '65%', background: 'linear-gradient(90deg, #8b5cf6, #3b82f6)' }}
+                  style={{ width: '65%', background: 'linear-gradient(90deg, #93c5fd, #38bdf8)' }}
                 />
               </div>
               <div className="flex justify-between text-[9px] font-bold font-mono text-white/30">

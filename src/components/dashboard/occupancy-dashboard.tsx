@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { Bed, BedDouble, Users, DollarSign, TrendingUp, AlertTriangle } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,

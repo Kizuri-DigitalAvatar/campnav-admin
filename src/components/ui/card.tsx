@@ -6,7 +6,7 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     return (
         <div
             className={cn(
-                "bg-white/5 border border-white/10 rounded-2xl shadow-sm overflow-hidden backdrop-blur-sm",
+                "glass-card overflow-hidden text-card-foreground",
                 className
             )}
             {...props}
@@ -26,7 +26,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     return (
         <div
-            className={cn("text-lg font-bold text-white", className)}
+            className={cn("text-lg font-bold tracking-tight text-foreground", className)}
             {...props}
         />
     )
@@ -35,7 +35,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
 function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
     return (
         <div
-            className={cn("text-blue-200/40 text-sm", className)}
+            className={cn("text-muted-foreground text-sm", className)}
             {...props}
         />
     )

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import { api } from "@convex/_generated/api";
 import { AlertTriangle, Bell, Calendar, ClipboardList, Megaphone } from "lucide-react";
 
@@ -52,13 +53,7 @@ export function AdminNotificationBell({ userId }: { userId?: string }) {
 
     const handleClick = (n: any) => {
         setOpen(false);
-        if (n.type === "admin_alert" && n.requestId) {
-            router.push("/requests");
-        } else if (n.assignmentId) {
-            router.push("/tasks");
-        } else {
-            router.push("/requests");
-        }
+        router.push("/requests");
     };
 
     return (

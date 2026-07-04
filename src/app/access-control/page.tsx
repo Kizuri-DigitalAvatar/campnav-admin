@@ -1,6 +1,7 @@
 "use client"
 
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { ShieldCheck } from "lucide-react"
 
 import { Card } from "@/components/ui/card"

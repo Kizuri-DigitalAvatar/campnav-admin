@@ -45,8 +45,8 @@ export function DialogContent({ children, className }: any) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
-            <div className={`relative z-50 bg-card p-6 rounded-3xl w-full max-w-lg border shadow-lg ${className || ""}`}>
+            <div className="fixed inset-0 bg-foreground/25 backdrop-blur-md animate-in fade-in duration-200" onClick={() => onOpenChange(false)} />
+            <div className={`relative z-50 glass-panel p-6 rounded-3xl w-full max-w-lg shadow-pop animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300 ${className || ""}`}>
                 {children}
             </div>
         </div>

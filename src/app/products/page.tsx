@@ -1,7 +1,8 @@
 "use client"
 
 import { FormEvent, useState } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { api } from "@convex/_generated/api"
 import { Package, Plus, Search, Filter, Trash2, Upload, X, Tag, DollarSign, Box } from "lucide-react"
 

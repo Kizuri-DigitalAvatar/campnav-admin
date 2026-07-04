@@ -8,16 +8,22 @@ function Button({
     ...props
 }: React.ComponentProps<"button"> & { variant?: string }) {
     const variants: any = {
-        default: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20",
-        destructive: "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20",
-        outline: "border border-white/10 bg-transparent hover:bg-white/5 text-white/80",
-        ghost: "hover:bg-white/5 text-white/60 hover:text-white",
+        default:
+            "bg-primary text-primary-foreground shadow-primary-glow hover:brightness-110 hover:-translate-y-px active:translate-y-0 active:brightness-95",
+        destructive:
+            "bg-destructive/10 text-destructive border border-destructive/25 hover:bg-destructive hover:text-destructive-foreground hover:shadow-card",
+        outline:
+            "tile-3d text-foreground hover:-translate-y-px active:translate-y-0",
+        secondary:
+            "bg-secondary text-secondary-foreground border hover:bg-muted",
+        ghost:
+            "text-muted-foreground hover:bg-muted hover:text-foreground",
     }
 
     return (
         <button
             className={cn(
-                "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-all disabled:opacity-50 disabled:pointer-events-none",
+                "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                 variants[variant] || variants.default,
                 className
             )}

@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
 import {
@@ -183,12 +184,12 @@ export default function RequestsPage() {
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center space-x-4">
-                    <div className="p-3 rounded-2xl bg-primary text-primary-foreground shadow-2xl shadow-primary/20">
+                    <div className="p-3 rounded-2xl tile-3d-primary text-primary-foreground">
                         <Bell className="w-6 h-6" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black tracking-tighter uppercase italic">Service Requests</h1>
-                        <p className="text-sm text-muted-foreground font-medium">Monitoring guest needs and facility maintenance.</p>
+                        <h1 className="text-3xl font-black tracking-tighter uppercase italic">Requests / Tasks</h1>
+                        <p className="text-sm text-muted-foreground font-medium">Guest needs, facility maintenance, and staff assignments.</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
