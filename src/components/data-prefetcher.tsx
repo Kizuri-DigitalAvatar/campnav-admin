@@ -49,6 +49,7 @@ export function DataPrefetcher() {
     useQuery(api.rooms.list);
     useQuery(api.rnr.getRnRRequests, {});
     useQuery(api.facilities.getFacilityBookings, {});
+    useQuery(api.facilities.listFacilities, { includeInactive: true });
     useQuery(api.preventive.list);
 
     // Content + reports
