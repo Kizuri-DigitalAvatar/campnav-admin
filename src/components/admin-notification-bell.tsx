@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { api } from "@convex/_generated/api";
-import { AlertTriangle, Bell, Calendar, ClipboardList, Megaphone, MessageSquare } from "lucide-react";
+import { AlertTriangle, Bell, Calendar, ClipboardList, Clock, Megaphone, MessageSquare } from "lucide-react";
 
 function timeAgo(timestamp: number) {
     const diff = Date.now() - timestamp;
@@ -23,6 +23,7 @@ function typeMeta(type: string) {
     switch (type) {
         case "admin_alert": return { icon: AlertTriangle, label: "Action Needed" };
         case "support": return { icon: MessageSquare, label: "Support Message" };
+        case "reminder": return { icon: Clock, label: "Reminder" };
         case "assignment": return { icon: ClipboardList, label: "Assignment" };
         case "announcement": return { icon: Megaphone, label: "Announcement" };
         case "activity": return { icon: Calendar, label: "Event" };

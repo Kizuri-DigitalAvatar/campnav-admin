@@ -215,7 +215,7 @@ export default function MenusPage() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
                         <UtensilsCrossed className="h-7 w-7 text-primary" />
-                        Weekly Room Service Menu
+                        Weekly Meal Menu
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         Add each day&apos;s dishes with a photo and description, or scan a printed menu and we&apos;ll fill the items in.
