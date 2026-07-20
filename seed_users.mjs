@@ -14,7 +14,7 @@ async function seed() {
     {
       name: "Camp Manager",
       email: "manager@campnav.com",
-      password: "manager123",
+      password: "manager123", 
       role: "camp_supervisor",
     },
   ];

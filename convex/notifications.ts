@@ -385,14 +385,19 @@ export const markAllRead = mutation({
     },
 });
 
-// Get pending notifications for a specific user
+// Get pending notifications for a specific user (push channel only — used by the client toast listener)
 export const getMyPendingNotifications = query({
     args: { userId: v.id("users") },
     handler: async (ctx, args) => {
         return await ctx.db
             .query("notifications")
             .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-            .filter((q) => q.eq(q.field("status"), "pending"))
+            .filter((q) =>
+                q.and(
+                    q.eq(q.field("status"), "pending"),
+                    q.eq(q.field("channel"), "push")
+                )
+            )
             .collect();
     },
 });

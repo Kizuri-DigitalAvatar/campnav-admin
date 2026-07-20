@@ -27,13 +27,19 @@ export function AdminNotificationListener({ userId }: { userId?: string }) {
                 const title =
                     n.type === "support" ? "New Support Message" :
                     n.type === "admin_alert" ? "Action Needed" :
+                    n.type === "room_assignment" ? "Room Assignment" :
+                    n.type === "emergency" ? "Emergency Alert" :
                     "Notification";
 
                 toast(title, {
                     description: n.message,
                     action: {
                         label: "View",
-                        onClick: () => router.push(n.type === "support" ? "/reports" : "/requests"),
+                        onClick: () => router.push(
+                            n.type === "support" ? "/reports" :
+                            n.type === "room_assignment" ? "/room-management" :
+                            "/requests"
+                        ),
                     },
                 });
 

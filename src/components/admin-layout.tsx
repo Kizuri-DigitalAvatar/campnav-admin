@@ -49,7 +49,6 @@ const navSections: { title: string; items: NavItem[] }[] = [
             { name: 'Users', href: '/users', icon: Users },
             { name: 'Requests / Tasks', href: '/requests', icon: ClipboardList },
             { name: 'Facilities', href: '/facilities', icon: Dumbbell },
-            { name: 'Reports', href: '/reports', icon: MessageSquare },
             { name: 'Preventive Maintenance', href: '/maintenance/preventive', icon: ClipboardCheck },
         ],
     },
@@ -82,6 +81,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
         items: [
             { name: 'Safety Dashboard', href: '/safety', icon: Shield },
             { name: 'Incidents', href: '/incidents', icon: AlertTriangle },
+            { name: 'Reports', href: '/reports', icon: MessageSquare },
             { name: 'Emergency', href: '/emergency', icon: Send },
         ],
     },

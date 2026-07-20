@@ -181,7 +181,92 @@ export default function RoomManagement() {
     return "text-gray-400 bg-gray-100"
   }
 
+  const getPredefinedRoomsForCategory = (category: string) => {
+    if (category === "executive") return EXECUTIVE_ROOMS
+    if (category === "hq_house") return HQ_HOUSE_ROOMS.flatMap(b => b.rooms)
+    if (category === "standard") return STANDARD_ROOMS.flatMap(b => b.rooms)
+    return []
+  }
+
+  const handleAddNow = async (roomNumber: string, category: string) => {
+    let capacity = 1
+    let pricePerNight = 50
+    if (category === "executive") {
+      capacity = 2
+      pricePerNight = 150
+    } else if (category === "hq_house") {
+      capacity = 2
+      pricePerNight = 100
+    }
+
+    try {
+      await createRoom({
+        roomNumber,
+        category,
+        capacity,
+        pricePerNight,
+        status: "available",
+      })
+    } catch (error) {
+      console.error("Error creating room:", error)
+    }
+  }
+
   const residentOptions = users.filter((user) => user.role === "resident" || user.role === "visitor")
+
+  const renderPredefinedRoomCell = (roomNumber: string, category: string) => {
+    const room = getRoomByNumber(roomNumber)
+    const status = room ? room.status : "not_added"
+    
+    return (
+      <div key={roomNumber} className="flex flex-col gap-2 p-3 border rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-sm font-bold text-foreground">{roomNumber}</span>
+          <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${getPredefinedRoomColor(status)}`}>
+            {status.replace("_", " ").toUpperCase()}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-1.5 mt-1">
+          {!room ? (
+            <button
+              onClick={() => handleAddNow(roomNumber, category)}
+              className="w-full text-[10px] font-black uppercase tracking-wider py-1.5 px-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 active:scale-95 transition-all text-center cursor-pointer border-none font-bold"
+            >
+              Add Now
+            </button>
+          ) : (
+            <>
+              <select
+                className="flex-1 text-[10px] font-black uppercase tracking-wider py-1.5 px-2 bg-muted hover:bg-muted/80 text-foreground border rounded-lg cursor-pointer outline-none transition-colors"
+                value={room.occupantId || ""}
+                onChange={(e) => {
+                  const val = e.target.value
+                  handleAssignOccupant(room._id, val ? val as Id<"users"> : null)
+                }}
+              >
+                <option value="">Vacant (Assign To)</option>
+                {residentOptions.map((user) => (
+                  <option key={user._id} value={user._id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+              
+              <button
+                onClick={() => handleDelete(room._id)}
+                className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors border border-destructive/10 active:scale-95 cursor-pointer"
+                title="Del Room"
+                aria-label={`Delete room ${roomNumber}`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -233,7 +318,7 @@ export default function RoomManagement() {
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary font-bold"
             >
               <option value="">All Categories</option>
               {ROOM_CATEGORIES.map(category => (
@@ -244,7 +329,7 @@ export default function RoomManagement() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary font-bold"
             >
               <option value="">All Status</option>
               {ROOM_STATUS.map(status => (
@@ -256,7 +341,7 @@ export default function RoomManagement() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity cursor-pointer font-bold"
             >
               <Plus size={16} />
               Add Room
@@ -284,14 +369,7 @@ export default function RoomManagement() {
                 <div>
                   <h4 className="font-medium mb-2">Executive Rooms</h4>
                   <div className="grid gap-2 grid-cols-2">
-                    {EXECUTIVE_ROOMS.map(roomNumber => (
-                      <div key={roomNumber} className="flex items-center justify-between p-3 border rounded-lg">
-                        <span className="font-mono text-sm">{roomNumber}</span>
-                        <span className={`text-xs px-2 py-1 rounded ${getPredefinedRoomColor(getPredefinedRoomStatus(roomNumber))}`}>
-                          {getPredefinedRoomStatus(roomNumber).replace("_", " ").toUpperCase()}
-                        </span>
-                      </div>
-                    ))}
+                    {EXECUTIVE_ROOMS.map(roomNumber => renderPredefinedRoomCell(roomNumber, "executive"))}
                   </div>
                 </div>
               )}
@@ -304,14 +382,7 @@ export default function RoomManagement() {
                       <div key={block.block} className="border rounded-lg p-3">
                         <div className="font-medium mb-2">{block.block}</div>
                         <div className="grid gap-2 grid-cols-2">
-                          {block.rooms.map(room => (
-                            <div key={room} className="flex items-center justify-between p-2 border rounded">
-                              <span className="font-mono text-sm">{room}</span>
-                              <span className={`text-xs px-2 py-1 rounded ${getPredefinedRoomColor(getPredefinedRoomStatus(room))}`}>
-                                {getPredefinedRoomStatus(room).replace("_", " ").toUpperCase()}
-                              </span>
-                            </div>
-                          ))}
+                          {block.rooms.map(room => renderPredefinedRoomCell(room, "hq_house"))}
                         </div>
                       </div>
                     ))}
@@ -327,14 +398,7 @@ export default function RoomManagement() {
                       <div key={block.block} className="border rounded-lg p-3">
                         <div className="font-medium mb-2">{block.block}</div>
                         <div className="grid gap-2 grid-cols-2">
-                          {block.rooms.map(room => (
-                            <div key={room} className="flex items-center justify-between p-2 border rounded">
-                              <span className="font-mono text-sm">{room}</span>
-                              <span className={`text-xs px-2 py-1 rounded ${getPredefinedRoomColor(getPredefinedRoomStatus(room))}`}>
-                                {getPredefinedRoomStatus(room).replace("_", " ").toUpperCase()}
-                              </span>
-                            </div>
-                          ))}
+                          {block.rooms.map(room => renderPredefinedRoomCell(room, "standard"))}
                         </div>
                       </div>
                     ))}
@@ -389,14 +453,14 @@ export default function RoomManagement() {
                   <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => handleEdit(room)}
-                      className="p-2.5 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90"
+                      className="p-2.5 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90 cursor-pointer"
                       aria-label={`Edit room ${room.roomNumber}`}
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(room._id)}
-                      className="p-2.5 rounded-xl text-destructive hover:bg-destructive/10 transition-all active:scale-90"
+                      className="p-2.5 rounded-xl text-destructive hover:bg-destructive/10 transition-all active:scale-90 cursor-pointer"
                       aria-label={`Delete room ${room.roomNumber}`}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -440,7 +504,7 @@ export default function RoomManagement() {
                       {room.occupantId && (
                         <button
                           onClick={() => handleAssignOccupant(room._id, null)}
-                          className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/10 active:scale-95 transition-all"
+                          className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/10 active:scale-95 transition-all cursor-pointer"
                           aria-label={`Clear occupant for room ${room.roomNumber}`}
                         >
                           <LogOut className="w-4 h-4" />
@@ -479,29 +543,40 @@ export default function RoomManagement() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Room Number *</label>
-                  <input
-                    type="text"
-                    value={formData.roomNumber}
-                    onChange={(e) => setFormData({...formData, roomNumber: e.target.value})}
-                    className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="e.g., E1, H1:1, R1:B1"
-                    required
-                  />
-                </div>
-                
-                <div>
                   <label className="block text-sm font-medium mb-2">Category *</label>
                   <select
                     value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                    onChange={(e) => setFormData({...formData, category: e.target.value, roomNumber: ""})}
+                    className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-background"
                     required
                   >
                     <option value="">Select category</option>
                     {ROOM_CATEGORIES.map(category => (
                       <option key={category.value} value={category.value}>{category.label}</option>
                     ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Room Name *</label>
+                  <select
+                    value={formData.roomNumber}
+                    onChange={(e) => setFormData({...formData, roomNumber: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-background"
+                    required
+                  >
+                    <option value="">Select room name</option>
+                    {formData.category ? (
+                      getPredefinedRoomsForCategory(formData.category)
+                        .filter(num => !rooms.some(r => r.roomNumber === num) || (editingRoom && formData.roomNumber === num))
+                        .map(num => (
+                          <option key={num} value={num}>
+                            {num}
+                          </option>
+                        ))
+                    ) : (
+                      <option value="" disabled>Please select category first</option>
+                    )}
                   </select>
                 </div>
                 
@@ -511,7 +586,7 @@ export default function RoomManagement() {
                     type="number"
                     value={formData.capacity}
                     onChange={(e) => setFormData({...formData, capacity: parseInt(e.target.value)})}
-                    className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-background"
                     min="1"
                     required
                   />
@@ -523,7 +598,7 @@ export default function RoomManagement() {
                     type="number"
                     value={formData.pricePerNight}
                     onChange={(e) => setFormData({...formData, pricePerNight: parseFloat(e.target.value)})}
-                    className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-background"
                     min="0"
                     step="0.01"
                   />
@@ -535,7 +610,7 @@ export default function RoomManagement() {
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-background"
                 >
                   {ROOM_STATUS.map(status => (
                     <option key={status.value} value={status.value}>{status.label}</option>
@@ -547,13 +622,13 @@ export default function RoomManagement() {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-6 py-2 border rounded-xl hover:bg-muted transition-colors"
+                  className="px-6 py-2 border rounded-xl hover:bg-muted transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity"
+                  className="px-6 py-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   {editingRoom ? "Update Room" : "Create Room"}
                 </button>

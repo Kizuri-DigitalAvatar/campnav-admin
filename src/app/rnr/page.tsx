@@ -37,12 +37,22 @@ export default function RnRAdminPage() {
   const rawUsers = useQuery(api.users.listAll) as AdminUser[] | undefined
   const users = useMemo(() => rawUsers ?? [], [rawUsers])
   const approverId = users[0]?._id
-  const employeeUsers = useMemo(
-    () => users.filter((user) => user.role === "staff" || user.role === "camp_supervisor" || user.role === "camp_manager"),
-    [users]
-  )
 
   const [userId, setUserId] = useState("")
+  const [userSearch, setUserSearch] = useState("")
+  const [showUserDropdown, setShowUserDropdown] = useState(false)
+
+  const filteredUsers = useMemo(() => {
+    if (!userSearch.trim()) return users
+    const query = userSearch.toLowerCase()
+    return users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        (user.role || "").toLowerCase().includes(query)
+    )
+  }, [users, userSearch])
+
   const [type, setType] = useState("leave")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
@@ -78,6 +88,7 @@ export default function RnRAdminPage() {
       })
 
       setUserId("")
+      setUserSearch("")
       setType("leave")
       setStartDate("")
       setEndDate("")
@@ -128,27 +139,74 @@ export default function RnRAdminPage() {
         </div>
 
         <form onSubmit={handleCreateRequest} className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          <div className="space-y-2 xl:col-span-2">
-            <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Employee</label>
-            <select
-              className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
-              value={userId}
-              onChange={(event) => setUserId(event.target.value)}
-              required
-            >
-              <option value="">Select employee</option>
-              {employeeUsers.map((user) => (
-                <option key={user._id} value={user._id}>
-                  {user.name} - {(user.role || "employee").replace("_", " ")}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2 xl:col-span-2 relative">
+            <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">User / Employee</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search user by name, email, role..."
+                value={userSearch}
+                onFocus={() => setShowUserDropdown(true)}
+                onBlur={() => {
+                  // Delay closing so click option handler registers first
+                  setTimeout(() => setShowUserDropdown(false), 200)
+                }}
+                onChange={(e) => {
+                  setUserSearch(e.target.value)
+                  const selected = users.find(u => u.name.toLowerCase() === e.target.value.toLowerCase())
+                  if (selected) {
+                    setUserId(selected._id)
+                  } else {
+                    setUserId("")
+                  }
+                }}
+                className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+                required
+              />
+              {userId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserId("")
+                    setUserSearch("")
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs cursor-pointer border-none bg-transparent"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {showUserDropdown && (
+              <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-xl border bg-popover text-popover-foreground shadow-md p-1 font-sans">
+                {filteredUsers.length === 0 ? (
+                  <div className="px-4 py-2 text-xs text-muted-foreground">No users found</div>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <button
+                      key={user._id}
+                      type="button"
+                      onMouseDown={() => {
+                        setUserId(user._id)
+                        setUserSearch(user.name)
+                        setShowUserDropdown(false)
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-accent hover:text-accent-foreground flex items-center justify-between cursor-pointer border-none bg-transparent font-sans"
+                    >
+                      <span className="font-medium text-foreground">{user.name}</span>
+                      <span className="text-[10px] opacity-75 font-mono text-muted-foreground">
+                        {(user.role || "user").replace("_", " ").toUpperCase()}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
             <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Request Type</label>
             <select
-              className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+              className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 font-bold"
               value={type}
               onChange={(event) => setType(event.target.value)}
             >
@@ -161,7 +219,7 @@ export default function RnRAdminPage() {
           <div className="space-y-2">
             <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Start Date</label>
             <input
-              className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+              className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 font-bold"
               type="date"
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
@@ -172,7 +230,7 @@ export default function RnRAdminPage() {
           <div className="space-y-2">
             <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">End Date</label>
             <input
-              className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+              className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 font-bold"
               type="date"
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
@@ -184,7 +242,7 @@ export default function RnRAdminPage() {
           <div className="space-y-2 md:col-span-2 xl:col-span-3">
             <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Reason / Notes</label>
             <input
-              className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+              className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 font-bold"
               placeholder="Annual leave, rotation travel, lodging support..."
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -197,7 +255,7 @@ export default function RnRAdminPage() {
               <div className="space-y-2">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Booking Ref</label>
                 <input
-                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 font-bold"
                   value={bookingReference}
                   onChange={(event) => setBookingReference(event.target.value)}
                   required
@@ -206,7 +264,7 @@ export default function RnRAdminPage() {
               <div className="space-y-2">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Departure</label>
                 <input
-                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 font-bold"
                   placeholder="FNA"
                   value={departure}
                   onChange={(event) => setDeparture(event.target.value)}
@@ -216,7 +274,7 @@ export default function RnRAdminPage() {
               <div className="space-y-2">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Arrival</label>
                 <input
-                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 font-bold"
                   placeholder="ACC"
                   value={arrival}
                   onChange={(event) => setArrival(event.target.value)}
@@ -226,7 +284,7 @@ export default function RnRAdminPage() {
               <div className="space-y-2">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Airline</label>
                 <input
-                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 font-bold"
                   value={airline}
                   onChange={(event) => setAirline(event.target.value)}
                   required
@@ -235,7 +293,7 @@ export default function RnRAdminPage() {
               <div className="space-y-2">
                 <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Confirm Code</label>
                 <input
-                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20"
+                  className="h-11 w-full rounded-xl border bg-muted/50 px-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-primary/20 font-bold"
                   value={confirmationCode}
                   onChange={(event) => setConfirmationCode(event.target.value)}
                   required
@@ -247,8 +305,8 @@ export default function RnRAdminPage() {
           <div className="md:col-span-2 xl:col-span-4">
             <button
               type="submit"
-              disabled={isSubmitting || employeeUsers.length === 0}
-              className="h-11 rounded-xl bg-primary px-6 text-xs font-black uppercase tracking-widest text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+              disabled={isSubmitting || users.length === 0}
+              className="h-11 rounded-xl bg-primary px-6 text-xs font-black uppercase tracking-widest text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer font-bold"
             >
               {isSubmitting ? "Creating..." : "Create RnR"}
             </button>
@@ -273,8 +331,8 @@ export default function RnRAdminPage() {
               </div>
               {request.status === "pending" && approverId && (
                 <div className="flex gap-2">
-                  <button onClick={() => reject({ requestId: request._id, approvedBy: approverId, reason: "Declined by admin" })} className="rounded-xl border px-3 py-2 text-xs font-bold">Reject</button>
-                  <button onClick={() => approve({ requestId: request._id, approvedBy: approverId })} className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground">Approve</button>
+                  <button onClick={() => reject({ requestId: request._id, approvedBy: approverId, reason: "Declined by admin" })} className="rounded-xl border px-3 py-2 text-xs font-bold cursor-pointer">Reject</button>
+                  <button onClick={() => approve({ requestId: request._id, approvedBy: approverId })} className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground cursor-pointer">Approve</button>
                 </div>
               )}
             </Card>

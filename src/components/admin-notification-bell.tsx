@@ -25,6 +25,7 @@ function typeMeta(type: string) {
         case "support": return { icon: MessageSquare, label: "Support Message" };
         case "reminder": return { icon: Clock, label: "Reminder" };
         case "assignment": return { icon: ClipboardList, label: "Assignment" };
+        case "room_assignment": return { icon: ClipboardList, label: "Room Assignment" };
         case "announcement": return { icon: Megaphone, label: "Announcement" };
         case "activity": return { icon: Calendar, label: "Event" };
         default: return { icon: Bell, label: "Notification" };
@@ -55,7 +56,11 @@ export function AdminNotificationBell({ userId }: { userId?: string }) {
 
     const handleClick = (n: any) => {
         setOpen(false);
-        router.push(n.type === "support" ? "/reports" : "/requests");
+        router.push(
+            n.type === "support" ? "/reports" :
+            n.type === "room_assignment" ? "/room-management" :
+            "/requests"
+        );
     };
 
     return (
