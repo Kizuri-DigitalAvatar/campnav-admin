@@ -31,7 +31,8 @@ import {
     ShieldCheck,
     ClipboardCheck,
     ChevronDown,
-    ActivitySquare
+    ActivitySquare,
+    Sparkles
 } from "lucide-react";
 
 type NavItem = {
@@ -90,6 +91,12 @@ const navSections: { title: string; items: NavItem[] }[] = [
         items: [
             { name: 'Updates', href: '/announcements', icon: Megaphone },
             { name: 'Activities', href: '/activities', icon: Bell },
+        ],
+    },
+    {
+        title: "Growth",
+        items: [
+            { name: 'Demo Requests', href: '/demo-requests', icon: Sparkles },
         ],
     },
 ];
