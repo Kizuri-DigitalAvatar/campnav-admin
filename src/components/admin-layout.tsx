@@ -7,6 +7,7 @@ import { AdminNotificationBell } from "@/components/admin-notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DataPrefetcher } from "@/components/data-prefetcher";
 import { AdminNotificationListener } from "@/components/admin-notification-listener";
+import { CampnavLogo } from "@/components/campnav-logo";
 import {
     LayoutDashboard,
     Users,
@@ -172,9 +173,7 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
             {/* Mobile Header */}
             <div className="md:hidden fixed top-0 left-0 right-0 h-16 glass-panel border-b flex items-center justify-between px-4 z-30">
                 <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-xl tile-3d-primary text-primary-foreground font-extrabold text-sm">
-                        CN
-                    </div>
+                    <CampnavLogo size={34} alt="" priority />
                     <div className="flex flex-col">
                         <h1 className="text-[10px] font-black uppercase tracking-widest text-primary leading-tight">
                             CAMPNAV
@@ -209,9 +208,7 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
                 } md:translate-x-0 md:z-20`}>
                 <div className="mb-10 flex items-center justify-between px-2 mt-16 md:mt-0">
                     <div className="flex items-center space-x-3">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-xl tile-3d-primary text-primary-foreground font-extrabold shrink-0">
-                            CN
-                        </div>
+                        <CampnavLogo size={38} alt="" className="shrink-0" priority />
                         <div className="flex flex-col">
                             <h1 className="text-[11px] font-black uppercase tracking-widest text-primary leading-tight">
                                 CAMPNAV
