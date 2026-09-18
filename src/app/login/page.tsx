@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Lock, AlertCircle, Loader2 } from "lucide-react"
 import { login } from "@/lib/auth"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { CampnavLogo } from "@/components/campnav-logo"
 
 export default function LoginPage() {
     const [email, setEmail] = useState("")
@@ -52,9 +53,7 @@ export default function LoginPage() {
             <div className="w-full max-w-sm relative">
                 {/* Logo Area */}
                 <div className="flex flex-col items-center mb-10 space-y-4">
-                    <div className="flex items-center justify-center w-16 h-16 rounded-2xl tile-3d-primary text-primary-foreground font-extrabold text-2xl">
-                        CN
-                    </div>
+                    <CampnavLogo size={68} priority />
                     <div className="text-center">
                         <h1 className="text-2xl font-bold tracking-tight">
                             CAMPNAV Admin
