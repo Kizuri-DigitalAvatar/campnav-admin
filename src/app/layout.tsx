@@ -5,6 +5,7 @@ import "./globals.css";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { isAuthenticated, getSession } from "@/lib/auth";
 import { AdminLayout } from "@/components/admin-layout"
+import { RouteProgress } from "@/components/route-progress";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -66,6 +67,7 @@ export default async function RootLayout({
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${nexa.variable} antialiased selection:bg-primary/25`}>
+        <RouteProgress />
         <Toaster position="top-right" richColors closeButton />
         <ConvexClientProvider>
           {isAuth ? (
