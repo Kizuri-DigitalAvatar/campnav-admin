@@ -3,7 +3,7 @@
 import { createElement, useState } from "react"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
-import { Bed, Home, Users, Plus, Edit, Trash2, Search, BedDouble, Crown, Building, LogOut, UserPlus } from "lucide-react"
+import { Bed, Home, Users, Plus, Edit, Trash2, Search, BedDouble, Crown, Building, LogOut, LayoutGrid } from "lucide-react"
 import { api } from "@convex/_generated/api"
 import { Id } from "@convex/_generated/dataModel"
 
@@ -36,6 +36,13 @@ const ROOM_CATEGORIES = [
   { value: "executive", label: "Executive", icon: Crown, color: "text-purple-600 bg-purple-100" },
   { value: "hq_house", label: "HQ House", icon: Building, color: "text-blue-600 bg-blue-100" },
   { value: "standard", label: "Standard", icon: Home, color: "text-green-600 bg-green-100" },
+]
+
+type RoomTab = "all" | "categories"
+
+const ROOM_TABS: { key: RoomTab; label: string; icon: typeof Bed }[] = [
+  { key: "all", label: "All Rooms", icon: Bed },
+  { key: "categories", label: "Categories", icon: LayoutGrid },
 ]
 
 const ROOM_STATUS = [
@@ -71,6 +78,7 @@ export default function RoomManagement() {
   const deleteRoom = useMutation(api.rooms.deleteRoom)
   const assignOccupant = useMutation(api.rooms.assignOccupant)
   
+  const [activeTab, setActiveTab] = useState<RoomTab>("all")
   const [showForm, setShowForm] = useState(false)
   const [editingRoom, setEditingRoom] = useState<Id<"rooms"> | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -92,6 +100,14 @@ export default function RoomManagement() {
     const matchesStatus = !filterStatus || room.status === filterStatus
     
     return matchesSearch && matchesCategory && matchesStatus
+  })
+
+  // Category order (Executive, HQ House, Standard), then natural room order: E1, H1:1, R1:B1, R2:B1 ... R10:B1
+  const sortedRooms = [...filteredRooms].sort((a, b) => {
+    const ca = ROOM_CATEGORIES.findIndex(c => c.value === a.category)
+    const cb = ROOM_CATEGORIES.findIndex(c => c.value === b.category)
+    if (ca !== cb) return (ca === -1 ? 99 : ca) - (cb === -1 ? 99 : cb)
+    return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true })
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -219,15 +235,15 @@ export default function RoomManagement() {
     const status = room ? room.status : "not_added"
     
     return (
-      <div key={roomNumber} className="flex flex-col gap-2 p-3 border rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-sm font-bold text-foreground">{roomNumber}</span>
-          <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${getPredefinedRoomColor(status)}`}>
+      <div key={roomNumber} className="min-w-0 flex flex-col gap-2 p-2.5 border rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <span className="font-mono text-sm font-bold text-foreground truncate">{roomNumber}</span>
+          <span className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider ${getPredefinedRoomColor(status)}`}>
             {status.replace("_", " ").toUpperCase()}
           </span>
         </div>
-        
-        <div className="flex items-center gap-1.5 mt-1">
+
+        <div className="flex items-center gap-1.5 min-w-0">
           {!room ? (
             <button
               onClick={() => handleAddNow(roomNumber, category)}
@@ -238,14 +254,16 @@ export default function RoomManagement() {
           ) : (
             <>
               <select
-                className="flex-1 text-[10px] font-black uppercase tracking-wider py-1.5 px-2 bg-muted hover:bg-muted/80 text-foreground border rounded-lg cursor-pointer outline-none transition-colors"
+                className="flex-1 min-w-0 w-full truncate text-[10px] font-black uppercase tracking-wider py-1.5 pl-2 pr-6 bg-muted hover:bg-muted/80 text-foreground border rounded-lg cursor-pointer outline-none transition-colors"
                 value={room.occupantId || ""}
+                title={room.occupantName || "Vacant — assign a resident"}
+                aria-label={`Assign occupant for room ${roomNumber}`}
                 onChange={(e) => {
                   const val = e.target.value
                   handleAssignOccupant(room._id, val ? val as Id<"users"> : null)
                 }}
               >
-                <option value="">Vacant (Assign To)</option>
+                <option value="">Vacant</option>
                 {residentOptions.map((user) => (
                   <option key={user._id} value={user._id}>
                     {user.name}
@@ -255,8 +273,8 @@ export default function RoomManagement() {
               
               <button
                 onClick={() => handleDelete(room._id)}
-                className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors border border-destructive/10 active:scale-95 cursor-pointer"
-                title="Del Room"
+                className="shrink-0 p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors border border-destructive/10 active:scale-95 cursor-pointer"
+                title="Delete room"
                 aria-label={`Delete room ${roomNumber}`}
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -300,7 +318,43 @@ export default function RoomManagement() {
         ))}
       </div>
 
-      {/* Filters and Actions */}
+      {/* Tabs */}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-end justify-between gap-3 border-b">
+        <div role="tablist" aria-label="Room views" className="flex gap-2 overflow-x-auto">
+          {ROOM_TABS.map((tab) => {
+            const isActive = tab.key === activeTab
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2.5 px-4 py-3 -mb-px border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
+                  isActive ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {createElement(tab.icon, { className: "w-4 h-4" })}
+                <span className="text-sm font-black tracking-tight">{tab.label}</span>
+                {tab.key === "all" && (
+                  <span className="text-[9px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{rooms.length}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="self-end sm:self-auto sm:mb-2 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity cursor-pointer font-bold"
+        >
+          <Plus size={16} />
+          Add Room
+        </button>
+      </div>
+
+      {/* All Rooms tab (default): filters + room cards */}
+      {activeTab === "all" && (
+      <div className="space-y-6">
       <div className="bg-card border rounded-3xl p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           <div className="flex flex-col sm:flex-row gap-4 flex-1">
@@ -337,23 +391,128 @@ export default function RoomManagement() {
               ))}
             </select>
           </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity cursor-pointer font-bold"
-            >
-              <Plus size={16} />
-              Add Room
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Room Categories Overview */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+      <section className="space-y-4">
+        <div className="flex items-center justify-end">
+          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+            {filteredRooms.length} shown
+          </span>
+        </div>
+
+        {filteredRooms.length === 0 ? (
+          <div className="p-16 text-center bg-muted/20 border-2 border-dashed rounded-3xl">
+            <Bed className="w-12 h-12 text-muted-foreground/20 mx-auto mb-6" />
+            <p className="text-muted-foreground/40 font-bold text-sm tracking-widest uppercase italic">No rooms found</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            {sortedRooms.map((room) => (
+              <article
+                key={room._id}
+                className={`bg-card border rounded-2xl p-4 group relative overflow-hidden transition-all hover:shadow-lg ${room.status === "occupied" ? "border-primary/20" : ""}`}
+              >
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`p-2.5 rounded-xl border shrink-0 ${room.status === "occupied"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : room.status === "maintenance"
+                        ? "bg-muted text-destructive border-destructive/20"
+                        : "bg-muted text-muted-foreground border-border"
+                      }`}>
+                      <Bed className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-base font-black text-foreground uppercase tracking-tight leading-tight truncate">
+                        Room {room.roomNumber}
+                      </h4>
+                      <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground/60">
+                        {room.category.replace("_", " ")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleEdit(room)}
+                      className="p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90 cursor-pointer"
+                      aria-label={`Edit room ${room.roomNumber}`}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(room._id)}
+                      className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-all active:scale-90 cursor-pointer"
+                      aria-label={`Delete room ${room.roomNumber}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <dl className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="rounded-xl bg-muted/40 px-3 py-2">
+                    <dt className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Capacity</dt>
+                    <dd className="text-sm font-bold">{room.capacity} {room.capacity === 1 ? "Person" : "Persons"}</dd>
+                  </div>
+                  <div className="rounded-xl bg-muted/40 px-3 py-2">
+                    <dt className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Rate</dt>
+                    <dd className="text-sm font-black text-primary">Le {(room.pricePerNight || 0).toLocaleString()}<span className="text-[10px] font-bold text-muted-foreground"> / night</span></dd>
+                  </div>
+                </dl>
+
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1.5 block">
+                  Current Occupant
+                </label>
+                <div className="flex items-center gap-2">
+                  <select
+                    className={`flex-1 min-w-0 w-full truncate h-10 rounded-xl border text-[11px] font-black uppercase tracking-wider pl-3 pr-8 transition-all cursor-pointer outline-none focus:ring-2 focus:ring-primary/20 ${room.occupantId
+                      ? "bg-background text-foreground border-border"
+                      : "bg-muted/50 text-muted-foreground/60 border-transparent"
+                      }`}
+                    value={room.occupantId || ""}
+                    title={room.occupantName || "Vacant"}
+                    onChange={(e) => handleAssignOccupant(room._id, e.target.value ? e.target.value as Id<"users"> : null)}
+                    aria-label={`Assign occupant for room ${room.roomNumber}`}
+                  >
+                    <option value="">VACANT</option>
+                    {residentOptions.map((user) => (
+                      <option key={user._id} value={user._id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                  {room.occupantId && (
+                    <button
+                      onClick={() => handleAssignOccupant(room._id, null)}
+                      className="shrink-0 h-10 w-10 flex items-center justify-center rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/10 active:scale-95 transition-all cursor-pointer"
+                      aria-label={`Clear occupant for room ${room.roomNumber}`}
+                      title="Check out occupant"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className={`absolute bottom-0 left-0 right-0 h-1 transition-colors ${room.status === "occupied"
+                  ? "bg-primary"
+                  : room.status === "maintenance"
+                    ? "bg-destructive"
+                    : "bg-muted"
+                  }`} />
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+      </div>
+      )}
+
+      {/* Categories tab: predefined rooms grouped by category and block */}
+      {activeTab === "categories" && (
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3 items-start">
         {ROOM_CATEGORIES.map((category, i) => (
-          <div key={category.value} className="bg-card border rounded-3xl p-6 shadow-sm">
+          <div key={category.value} className="min-w-0 bg-card border rounded-3xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-xl ${category.color}`}>
@@ -379,8 +538,8 @@ export default function RoomManagement() {
                   <h4 className="font-medium mb-2">HQ House</h4>
                   <div className="space-y-2">
                     {HQ_HOUSE_ROOMS.map(block => (
-                      <div key={block.block} className="border rounded-lg p-3">
-                        <div className="font-medium mb-2">{block.block}</div>
+                      <div key={block.block} className="border rounded-2xl p-2.5 bg-muted/20">
+                        <div className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2 px-0.5">{block.block}</div>
                         <div className="grid gap-2 grid-cols-2">
                           {block.rooms.map(room => renderPredefinedRoomCell(room, "hq_house"))}
                         </div>
@@ -395,8 +554,8 @@ export default function RoomManagement() {
                   <h4 className="font-medium mb-2">Standard Rooms</h4>
                   <div className="space-y-2">
                     {STANDARD_ROOMS.map(block => (
-                      <div key={block.block} className="border rounded-lg p-3">
-                        <div className="font-medium mb-2">{block.block}</div>
+                      <div key={block.block} className="border rounded-2xl p-2.5 bg-muted/20">
+                        <div className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2 px-0.5">{block.block}</div>
                         <div className="grid gap-2 grid-cols-2">
                           {block.rooms.map(room => renderPredefinedRoomCell(room, "standard"))}
                         </div>
@@ -409,128 +568,7 @@ export default function RoomManagement() {
           </div>
         ))}
       </div>
-
-      {/* Rooms List */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold">All Rooms</h3>
-          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
-            {filteredRooms.length} shown
-          </span>
-        </div>
-
-        {filteredRooms.length === 0 ? (
-          <div className="p-16 text-center bg-muted/20 border-2 border-dashed rounded-3xl">
-            <Bed className="w-12 h-12 text-muted-foreground/20 mx-auto mb-6" />
-            <p className="text-muted-foreground/40 font-bold text-sm tracking-widest uppercase italic">No rooms found</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
-            {filteredRooms.map((room) => (
-              <article
-                key={room._id}
-                className={`bg-card border rounded-3xl p-6 lg:p-8 group relative overflow-hidden transition-all hover:shadow-xl ${room.status === "occupied" ? "border-primary/20" : ""}`}
-              >
-                <div className="flex items-start justify-between gap-4 mb-8">
-                  <div className="flex items-center gap-5 min-w-0">
-                    <div className={`p-4 rounded-2xl border shadow-sm shrink-0 ${room.status === "occupied"
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : room.status === "maintenance"
-                        ? "bg-muted text-destructive border-destructive/20"
-                        : "bg-muted text-muted-foreground border-border"
-                      }`}>
-                      <Bed className="w-6 h-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-2xl font-black text-foreground uppercase tracking-tight leading-none truncate">
-                        Room {room.roomNumber}
-                      </h4>
-                      <span className="mt-3 block text-[11px] font-black uppercase tracking-[0.22em] text-muted-foreground/60">
-                        {room.category.replace("_", " ")}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleEdit(room)}
-                      className="p-2.5 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90 cursor-pointer"
-                      aria-label={`Edit room ${room.roomNumber}`}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(room._id)}
-                      className="p-2.5 rounded-xl text-destructive hover:bg-destructive/10 transition-all active:scale-90 cursor-pointer"
-                      aria-label={`Delete room ${room.roomNumber}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-5">
-                  <div className="flex justify-between items-end border-b pb-4 border-dashed">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Capacity</span>
-                    <span className="text-base font-bold">{room.capacity} Persons</span>
-                  </div>
-                  <div className="flex justify-between items-end border-b pb-4 border-dashed">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Rate</span>
-                    <span className="text-base font-black text-primary uppercase">
-                      Le {(room.pricePerNight || 0).toLocaleString()} / Night
-                    </span>
-                  </div>
-
-                  <div className="pt-6">
-                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground mb-4 block">
-                      Current Occupant
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <select
-                        className={`flex-1 min-w-0 h-12 rounded-xl border text-[11px] font-black uppercase tracking-widest px-4 transition-all cursor-pointer outline-none focus:ring-2 focus:ring-primary/20 ${room.occupantId
-                          ? "bg-background text-foreground border-border"
-                          : "bg-muted/50 text-muted-foreground/60 border-transparent"
-                          }`}
-                        value={room.occupantId || ""}
-                        onChange={(e) => handleAssignOccupant(room._id, e.target.value ? e.target.value as Id<"users"> : null)}
-                        aria-label={`Assign occupant for room ${room.roomNumber}`}
-                      >
-                        <option value="">VACANT</option>
-                        {residentOptions.map((user) => (
-                          <option key={user._id} value={user._id}>
-                            {user.name}
-                          </option>
-                        ))}
-                      </select>
-                      {room.occupantId && (
-                        <button
-                          onClick={() => handleAssignOccupant(room._id, null)}
-                          className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/10 active:scale-95 transition-all cursor-pointer"
-                          aria-label={`Clear occupant for room ${room.roomNumber}`}
-                        >
-                          <LogOut className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                    {room.occupantName && (
-                      <div className="mt-4 flex items-center gap-2.5 p-3 rounded-xl bg-primary/5 text-primary border border-primary/10">
-                        <UserPlus className="w-3.5 h-3.5" />
-                        <span className="text-[11px] font-bold">Assigned to {room.occupantName}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className={`absolute bottom-0 left-0 right-0 h-2 transition-colors ${room.status === "occupied"
-                  ? "bg-primary"
-                  : room.status === "maintenance"
-                    ? "bg-destructive"
-                    : "bg-muted"
-                  }`} />
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      )}
 
       {/* Room Form Modal */}
       {showForm && (

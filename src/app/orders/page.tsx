@@ -4,7 +4,8 @@ import { useState } from "react"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "@convex/_generated/api"
-import { Search, Filter, Trash2, ShoppingBag, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Search, Filter, Trash2, ShoppingBag, CheckCircle2, AlertTriangle, Plus } from "lucide-react"
+import { NewOrderDialog } from "@/components/new-order-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 
 const STATUSES = ["pending", "in_progress", "completed", "failed"] as const
@@ -15,6 +16,7 @@ export default function OrdersPage() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [filterSource, setFilterSource] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [isNewOrderOpen, setIsNewOrderOpen] = useState(false)
   const orders = useQuery(api.orders.list, { 
     status: filterStatus,
     source: filterSource
@@ -90,8 +92,18 @@ export default function OrdersPage() {
               <option value="room_service">ROOM SERVICE</option>
             </select>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsNewOrderOpen(true)}
+            className="flex items-center gap-2 bg-primary text-primary-foreground h-10 rounded-xl px-4 text-xs font-bold hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" />
+            NEW ORDER
+          </button>
         </div>
       </div>
+
+      <NewOrderDialog open={isNewOrderOpen} onOpenChange={setIsNewOrderOpen} />
 
       <div className="bg-card border rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -146,6 +158,9 @@ export default function OrdersPage() {
                   <td className="px-6 py-5">
                     <div className="flex flex-col">
                       <span className="font-bold text-sm tracking-tight">{o.userName}</span>
+                      {o.placedBy && (
+                        <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-primary/10 text-primary w-fit">By admin</span>
+                      )}
                       <span className="text-[10px] text-muted-foreground/50 font-mono tracking-tighter">{o._id}</span>
                     </div>
                   </td>

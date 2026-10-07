@@ -6,7 +6,7 @@ import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../../convex/_generated/api"
 import { 
   Wrench, Calendar, CheckCircle2, AlertCircle, Plus, 
-  Settings, Droplets, Wind, ClipboardCheck, Trash2
+  Settings, Droplets, Wind, ClipboardCheck, Trash2, User
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -22,27 +22,47 @@ export default function PreventiveMaintenancePage() {
   const items = useQuery(api.preventive.list) ?? []
   const createItem = useMutation(api.preventive.create)
   const updateStatus = useMutation(api.preventive.updateStatus)
+  const assignItem = useMutation(api.preventive.assign)
+  const removeItem = useMutation(api.preventive.remove)
+  // Maintenance-duty staff first, since they're the usual assignees
+  const staff = [...(useQuery(api.users.listStaff, {}) ?? [])].sort((a: any, b: any) =>
+    Number((b.assignedDuties || []).includes("maintenance")) - Number((a.assignedDuties || []).includes("maintenance")) ||
+    (a.name || "").localeCompare(b.name || "")
+  )
 
   const [title, setTitle] = useState("")
   const [type, setType] = useState("ac_service")
   const [frequency, setFrequency] = useState("monthly")
-  const [nextDue, setNextDue] = useState("")
+  const [nextDue, setNextDue] = useState("") // start of the work window
+  const [endsAt, setEndsAt] = useState("")
+  const [assignedTo, setAssignedTo] = useState("")
   const [showAdd, setShowAdd] = useState(false)
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    if (!title || !nextDue) return
-    
+    if (!title || !nextDue || !endsAt) return
+    const start = new Date(nextDue).getTime()
+    const end = new Date(endsAt).getTime()
+    if (end <= start) {
+      alert("The end time must be after the start time.")
+      return
+    }
+
     await createItem({
       title,
       type,
       frequency,
-      nextDue: new Date(nextDue).getTime(),
+      nextDue: start,
+      durationMinutes: Math.round((end - start) / 60000),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      assignedTo: (assignedTo || undefined) as any,
       checklist: [{ item: "Standard Inspection", completed: false }],
     })
-    
+
     setTitle("")
     setNextDue("")
+    setEndsAt("")
+    setAssignedTo("")
     setShowAdd(false)
   }
 
@@ -78,7 +98,7 @@ export default function PreventiveMaintenancePage() {
 
       {showAdd && (
         <Card className="p-6 border-2 border-primary/20 bg-primary/5 rounded-3xl animate-in fade-in slide-in-from-top-4">
-          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 items-end">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Task Title</label>
               <Input 
@@ -114,17 +134,35 @@ export default function PreventiveMaintenancePage() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Next Due Date</label>
-              <Input 
-                type="date"
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Starts</label>
+              <Input
+                type="datetime-local"
                 value={nextDue}
                 onChange={(e) => setNextDue(e.target.value)}
                 className="h-11 rounded-xl bg-background"
                 required
               />
             </div>
-            <div className="md:col-start-4">
-              <button type="submit" className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest shadow-lg">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ends</label>
+              <Input
+                type="datetime-local"
+                value={endsAt}
+                min={nextDue || undefined}
+                onChange={(e) => setEndsAt(e.target.value)}
+                className="h-11 rounded-xl bg-background"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Assign To</label>
+              <StaffSelect staff={staff} value={assignedTo} onChange={setAssignedTo} />
+            </div>
+            <div className="md:col-span-3 lg:col-span-6 flex flex-col sm:flex-row sm:items-center gap-3">
+              <p className="sm:mr-auto text-[11px] text-muted-foreground">
+                Residents and guests are notified of the start and end time when you save.
+              </p>
+              <button type="submit" className="px-8 h-11 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest shadow-lg">
                 SAVE SCHEDULE
               </button>
             </div>
@@ -161,7 +199,8 @@ export default function PreventiveMaintenancePage() {
                       <span>Next Due:</span>
                     </div>
                     <span className={`font-bold ${isOverdue ? 'text-red-500' : 'text-foreground'}`}>
-                      {new Date(item.nextDue).toLocaleDateString()}
+                      {new Date(item.nextDue).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      {item.durationMinutes ? ` to ${new Date(item.nextDue + item.durationMinutes * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
@@ -171,7 +210,20 @@ export default function PreventiveMaintenancePage() {
                     </div>
                     <span className="font-bold">
                       {item.lastCompleted ? new Date(item.lastCompleted).toLocaleDateString() : "Never"}
+                      {item.lastCompletedByName && <span className="font-medium text-muted-foreground"> · {item.lastCompletedByName}</span>}
                     </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-muted-foreground shrink-0">
+                      <User className="w-3.5 h-3.5" />
+                      <span>Assigned:</span>
+                    </div>
+                    <StaffSelect
+                      compact
+                      staff={staff}
+                      value={item.assignedTo ?? ""}
+                      onChange={(id) => assignItem({ id: item._id, staffId: (id || null) as any })}
+                    />
                   </div>
                 </div>
 
@@ -183,6 +235,12 @@ export default function PreventiveMaintenancePage() {
                     MARK COMPLETED
                   </button>
                 )}
+                <button
+                  onClick={() => { if (confirm(`Delete "${item.title}"?`)) removeItem({ id: item._id }) }}
+                  className="w-full py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3 h-3" /> Delete schedule
+                </button>
               </div>
             </Card>
           )
@@ -202,5 +260,29 @@ export default function PreventiveMaintenancePage() {
         </div>
       )}
     </div>
+  )
+}
+
+function StaffSelect({ staff, value, onChange, compact }: {
+  staff: any[]
+  value: string
+  onChange: (id: string) => void
+  compact?: boolean
+}) {
+  return (
+    <select
+      className={compact
+        ? `min-w-0 max-w-[60%] h-8 rounded-lg border bg-background px-2 text-xs font-bold outline-none ${value ? "" : "text-destructive"}`
+        : "w-full h-11 rounded-xl border bg-background px-4 text-sm outline-none"}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">Unassigned</option>
+      {staff.map((s) => (
+        <option key={s._id} value={s._id}>
+          {s.name}{(s.assignedDuties || []).includes("maintenance") ? " · maintenance" : ""}
+        </option>
+      ))}
+    </select>
   )
 }

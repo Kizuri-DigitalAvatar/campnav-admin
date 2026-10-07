@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "@convex/_generated/api"
@@ -48,8 +48,28 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 
+// useSearchParams needs a Suspense boundary for the page to prerender
 export default function RequestsPage() {
+    return (
+        <Suspense>
+            <RequestsPageContent />
+        </Suspense>
+    )
+}
+
+const SERVICE_OPTIONS = [
+    { value: "maintenance", label: "Maintenance" },
+    { value: "housekeeping", label: "Housekeeping" },
+    { value: "laundry", label: "Laundry" },
+    { value: "room_service", label: "Room Service" },
+    { value: "delivery", label: "Delivery" },
+]
+
+function RequestsPageContent() {
     const router = useRouter()
+    // Set when arriving from a dashboard chart, e.g. /requests?department=housekeeping
+    const highlightDept = useSearchParams().get("department")
+    const scrolledToHighlight = useRef(false)
     const requests = useQuery(api.requests.list, {})
     const requestList = requests ?? []
     const staffList = useQuery(api.users.listStaff, {})
@@ -62,7 +82,7 @@ export default function RequestsPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false)
     const [isNewRequestOpen, setIsNewRequestOpen] = useState(false)
     const [search, setSearch] = useState("")
-    const [serviceFilter, setServiceFilter] = useState("all")
+    const [serviceFilter, setServiceFilter] = useState(highlightDept || "all")
 
     // Office Use Form State
     const [urgency, setUrgency] = useState("")
@@ -180,6 +200,13 @@ export default function RequestsPage() {
         })
         .sort((a: any, b: any) => b.createdAt - a.createdAt)
 
+    // Bring the first highlighted task into view once the list has loaded
+    useEffect(() => {
+        if (!highlightDept || requests === undefined || scrolledToHighlight.current) return
+        scrolledToHighlight.current = true
+        document.querySelector('[data-highlighted="true"]')?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, [highlightDept, requests])
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -228,11 +255,13 @@ export default function RequestsPage() {
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl">
                                 <SelectItem value="all">All services</SelectItem>
-                                <SelectItem value="maintenance">Maintenance</SelectItem>
-                                <SelectItem value="housekeeping">Housekeeping</SelectItem>
-                                <SelectItem value="laundry">Laundry</SelectItem>
-                                <SelectItem value="room_service">Room Service</SelectItem>
-                                <SelectItem value="delivery">Delivery</SelectItem>
+                                {SERVICE_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                ))}
+                                {/* Departments with no request type yet (kitchen, shop, electrical) */}
+                                {highlightDept && !SERVICE_OPTIONS.some((opt) => opt.value === highlightDept) && (
+                                    <SelectItem value={highlightDept} className="capitalize">{highlightDept.replaceAll("_", " ")}</SelectItem>
+                                )}
                             </SelectContent>
                         </Select>
                     </div>
@@ -290,7 +319,14 @@ export default function RequestsPage() {
                                 ))
                             ) : (
                                 filteredRequests.map((req: any) => (
-                                <tr key={req._id} className="hover:bg-muted/20 transition-all group cursor-pointer" onClick={() => openRequest(req)}>
+                                <tr
+                                    key={req._id}
+                                    data-highlighted={highlightDept === req.type || undefined}
+                                    className={`transition-all group cursor-pointer ${highlightDept === req.type
+                                        ? "bg-primary/10 hover:bg-primary/15 shadow-[inset_4px_0_0_0_var(--primary)]"
+                                        : "hover:bg-muted/20"}`}
+                                    onClick={() => openRequest(req)}
+                                >
                                     <td className="p-6">
                                         <div className="flex items-center space-x-4">
                                             <div className="w-10 h-10 rounded-xl bg-primary/10 border-2 border-primary/5 flex items-center justify-center font-black text-xs text-primary">
@@ -554,6 +590,15 @@ export default function RequestsPage() {
                                                     </SelectContent>
                                                 </Select>
                                             </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => router.push(`/requests/${selectedRequest._id}`)}
+                                                className="w-full flex items-center justify-between gap-2 h-10 px-4 rounded-xl border bg-muted/30 hover:bg-muted text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                                            >
+                                                <span className="flex items-center gap-2"><User className="w-3.5 h-3.5" /> Staff availability & who saw it</span>
+                                                <ChevronRight className="w-3.5 h-3.5" />
+                                            </button>
 
                                             {requestTask?.staff ? (
                                                 <div className="space-y-1.5">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { toast } from "sonner";
+import { adminNotificationHref } from "@/lib/notification-routes";
 
 // Toasts new notifications for the logged-in admin the moment they arrive
 export function AdminNotificationListener({ userId }: { userId?: string }) {
@@ -29,17 +30,15 @@ export function AdminNotificationListener({ userId }: { userId?: string }) {
                     n.type === "admin_alert" ? "Action Needed" :
                     n.type === "room_assignment" ? "Room Assignment" :
                     n.type === "emergency" ? "Emergency Alert" :
+                    n.type === "menu_reminder" ? "Menu Reminder" :
+                    n.type === "missing_room" ? "Room Needed" :
                     "Notification";
 
                 toast(title, {
                     description: n.message,
                     action: {
                         label: "View",
-                        onClick: () => router.push(
-                            n.type === "support" ? "/reports" :
-                            n.type === "room_assignment" ? "/room-management" :
-                            "/requests"
-                        ),
+                        onClick: () => router.push(adminNotificationHref(n)),
                     },
                 });
 
