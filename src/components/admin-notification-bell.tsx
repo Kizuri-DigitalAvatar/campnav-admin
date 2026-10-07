@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { api } from "@convex/_generated/api";
+import { adminNotificationHref } from "@/lib/notification-routes";
 import { AlertTriangle, Bell, Calendar, ClipboardList, Clock, Megaphone, MessageSquare } from "lucide-react";
 
 function timeAgo(timestamp: number) {
@@ -23,9 +24,11 @@ function typeMeta(type: string) {
     switch (type) {
         case "admin_alert": return { icon: AlertTriangle, label: "Action Needed" };
         case "support": return { icon: MessageSquare, label: "Support Message" };
-        case "reminder": return { icon: Clock, label: "Reminder" };
+        case "reminder":
+        case "menu_reminder": return { icon: Clock, label: "Reminder" };
         case "assignment": return { icon: ClipboardList, label: "Assignment" };
         case "room_assignment": return { icon: ClipboardList, label: "Room Assignment" };
+        case "missing_room": return { icon: AlertTriangle, label: "Room Needed" };
         case "announcement": return { icon: Megaphone, label: "Announcement" };
         case "activity": return { icon: Calendar, label: "Event" };
         default: return { icon: Bell, label: "Notification" };
@@ -56,11 +59,7 @@ export function AdminNotificationBell({ userId }: { userId?: string }) {
 
     const handleClick = (n: any) => {
         setOpen(false);
-        router.push(
-            n.type === "support" ? "/reports" :
-            n.type === "room_assignment" ? "/room-management" :
-            "/requests"
-        );
+        router.push(adminNotificationHref(n));
     };
 
     return (

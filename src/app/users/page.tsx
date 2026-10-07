@@ -1,12 +1,13 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "@convex/_generated/api"
 
-import { Upload, X, Trash2, Search, Filter, UserCog } from "lucide-react"
+import { Upload, X, Trash2, Search, Filter, UserCog, Plus, BedDouble, AlertTriangle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 const ROLE_OPTIONS = [
   { value: "camp_manager", label: "Camp Manager", category: "admin", subcategory: "super_admin", accessLevel: 5 },
@@ -59,6 +60,12 @@ function normalizeSubcategory(role: string, subcategory?: string, department?: s
   return SUBCATEGORY_OPTIONS[role]?.[0]?.value || ""
 }
 
+// Residents and staff use the client app, which needs to know their room
+const ROOM_REQUIRED_ROLES = ["resident", "staff"]
+function needsRoom(role?: string) {
+  return ROOM_REQUIRED_ROLES.includes(normalizeRole(role))
+}
+
 function getSubcategoryLabel(role?: string, subcategory?: string) {
   const match = SUBCATEGORY_OPTIONS[role || ""]?.find((option) => option.value === subcategory)
   return match?.label || subcategory?.replaceAll("_", " ") || "Not assigned"
@@ -67,6 +74,16 @@ function getSubcategoryLabel(role?: string, subcategory?: string) {
 export default function UsersPage() {
   const [filterRole, setFilterRole] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [showMissingRoomOnly, setShowMissingRoomOnly] = useState(false)
+
+  // Missing-room notifications link here with ?filter=no-room
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("filter") === "no-room") {
+      setShowMissingRoomOnly(true)
+    }
+  }, [])
+
+  const rooms = useQuery(api.rooms.list)
 
   const users = useQuery(api.users.list, { role: filterRole })
   const userList = users ?? []
@@ -89,14 +106,20 @@ export default function UsersPage() {
   const [durationEnd, setDurationEnd] = useState("")
   const [isOnSite, setIsOnSite] = useState(false)
   const [campStaffId, setCampStaffId] = useState("")
+  const [roomNumber, setRoomNumber] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const roleMeta = getRoleMeta(role)
   const roleSubcategories = SUBCATEGORY_OPTIONS[role] || []
 
+  const missingRoomUsers = userList.filter((u: any) => needsRoom(u.role) && !u.roomNumber)
+  const roomRequired = needsRoom(role)
+
   const filteredResults = userList.filter((u: any) =>
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (!showMissingRoomOnly || (needsRoom(u.role) && !u.roomNumber)) &&
+    (u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -110,6 +133,10 @@ export default function UsersPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!name.trim() || !email.trim()) return
+    if (roomRequired && !roomNumber) {
+      alert("Please assign a room. Residents and staff must have a room.")
+      return
+    }
 
     setIsUploading(true)
     let finalImage = image
@@ -145,6 +172,7 @@ export default function UsersPage() {
         durationEnd: role === "resident" && userSubcategory === "guest" && durationEnd ? new Date(durationEnd).getTime() : undefined,
         isOnSite: role === 'staff' || role === "camp_supervisor" ? isOnSite : undefined,
         campStaffId: role === 'staff' ? campStaffId.trim() : undefined,
+        roomNumber: roomNumber || undefined,
       })
       resetForm()
     } catch (err) {
@@ -169,7 +197,14 @@ export default function UsersPage() {
     setDurationEnd("")
     setIsOnSite(false)
     setCampStaffId("")
+    setRoomNumber("")
     setEditingId(null)
+    setIsFormOpen(false)
+  }
+
+  function handleAdd() {
+    resetForm()
+    setIsFormOpen(true)
   }
 
   function handleEdit(user: any) {
@@ -186,7 +221,9 @@ export default function UsersPage() {
     setDurationEnd(user.durationEnd ? new Date(user.durationEnd).toISOString().split('T')[0] : "")
     setIsOnSite(user.isOnSite || false)
     setCampStaffId(user.campStaffId || "")
+    setRoomNumber(user.roomNumber || "")
     setEditingId(user._id)
+    setIsFormOpen(true)
   }
 
   async function handleDelete(id: any) {
@@ -230,14 +267,32 @@ export default function UsersPage() {
               ))}
             </select>
           </div>
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="flex items-center gap-2 bg-primary text-primary-foreground h-10 rounded-xl px-4 text-xs font-bold hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" />
+            ADD USER
+          </button>
         </div>
       </div>
 
       {/* Registration Form */}
-      <div className="bg-card border rounded-3xl p-6 md:p-8 shadow-sm">
-        <h3 className="text-xl font-bold mb-8">
-          {editingId ? "Edit User Account" : "Register New Account"}
-        </h3>
+      <Dialog open={isFormOpen} onOpenChange={(open: boolean) => { if (!open) resetForm() }}>
+      <DialogContent className="max-w-7xl! w-[95vw] max-h-[90vh] overflow-y-auto md:p-8">
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-xl font-bold">
+            {editingId ? "Edit User Account" : "Register New Account"}
+          </h3>
+          <button
+            type="button"
+            onClick={resetForm}
+            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
         <form
           onSubmit={handleSubmit}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
@@ -281,6 +336,38 @@ export default function UsersPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                Room {roomRequired ? <span className="text-destructive">*</span> : <span className="normal-case font-medium">(optional)</span>}
+              </label>
+              <select
+                className={`w-full h-11 rounded-xl border bg-muted/50 px-4 text-sm focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all outline-none ${roomRequired && !roomNumber ? "border-destructive/50" : ""}`}
+                value={roomNumber}
+                onChange={(e) => setRoomNumber(e.target.value)}
+              >
+                <option value="">{rooms === undefined ? "Loading rooms..." : "Select a room"}</option>
+                {/* Keep a saved room selectable even if it no longer exists in Rooms */}
+                {roomNumber && rooms && !rooms.some((r: any) => r.roomNumber === roomNumber) && (
+                  <option value={roomNumber}>{roomNumber} (not in room list)</option>
+                )}
+                {[...(rooms ?? [])]
+                  .sort((a: any, b: any) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }))
+                  .map((r: any) => {
+                    const takenBySomeoneElse = r.occupantId && r.occupantId !== editingId
+                    return (
+                      <option key={r._id} value={r.roomNumber}>
+                        {r.roomNumber}
+                        {r.category ? ` · ${r.category}` : ""}
+                        {takenBySomeoneElse ? ` — occupied by ${r.occupantName}` : r.status === "maintenance" ? " — maintenance" : " — available"}
+                      </option>
+                    )
+                  })}
+              </select>
+              {rooms !== undefined && rooms.length === 0 && (
+                <p className="text-[10px] text-muted-foreground ml-1">No rooms yet. Add rooms under Room Management first.</p>
+              )}
             </div>
           </div>
 
@@ -453,18 +540,34 @@ export default function UsersPage() {
             >
               {isUploading ? "PROCESS..." : (editingId ? "SAVE CHANGES" : "REGISTER ACCOUNT")}
             </button>
-            {editingId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="bg-muted text-foreground px-6 h-11 rounded-xl hover:bg-muted/80 transition-all"
-              >
-                CANCEL
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={resetForm}
+              className="bg-muted text-foreground px-6 h-11 rounded-xl hover:bg-muted/80 transition-all"
+            >
+              CANCEL
+            </button>
           </div>
         </form>
-      </div>
+      </DialogContent>
+      </Dialog>
+
+      {missingRoomUsers.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+          <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+          <p className="text-sm font-medium flex-1">
+            <span className="font-black">{missingRoomUsers.length}</span> resident{missingRoomUsers.length === 1 ? "" : "s"}/staff {missingRoomUsers.length === 1 ? "has" : "have"} no room assigned.
+            They can't make requests until you set one.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowMissingRoomOnly((v) => !v)}
+            className="h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest bg-destructive text-white hover:opacity-90 transition-opacity shrink-0"
+          >
+            {showMissingRoomOnly ? "Show everyone" : "Show them"}
+          </button>
+        </div>
+      )}
 
       <div className="bg-card border rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -534,6 +637,19 @@ export default function UsersPage() {
                       <div>
                         <div className="font-bold text-sm tracking-tight">{u.name}</div>
                         <div className="text-[10px] text-muted-foreground font-mono italic">{u.email}</div>
+                        {u.roomNumber ? (
+                          <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
+                            <BedDouble className="w-3 h-3" /> Room {u.roomNumber}
+                          </div>
+                        ) : needsRoom(u.role) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(u)}
+                            className="mt-1 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-destructive hover:underline"
+                          >
+                            <BedDouble className="w-3 h-3" /> No room — set one
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </td>

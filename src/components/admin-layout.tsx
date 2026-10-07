@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { DataPrefetcher } from "@/components/data-prefetcher";
 import { AdminNotificationListener } from "@/components/admin-notification-listener";
 import { CampnavLogo } from "@/components/campnav-logo";
+import { AdminSessionContext } from "@/components/admin-session";
 import {
     LayoutDashboard,
     Users,
@@ -302,7 +303,7 @@ export function AdminLayout({ children, session }: { children: React.ReactNode, 
             {/* Main Content */}
             <main className="flex-1 ml-0 md:ml-64 min-h-screen pt-16 md:pt-0 dot-grid">
                 <div className="max-w-7xl mx-auto py-4 md:py-8 px-4 md:px-8">
-                    {children}
+                    <AdminSessionContext.Provider value={session}>{children}</AdminSessionContext.Provider>
                 </div>
             </main>
         </div>

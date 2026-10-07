@@ -1,12 +1,14 @@
 "use client"
 
-import { useQuery } from "convex-helpers/react/cache"
+import { createContext, useContext, useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useQuery } from "convex-helpers/react/cache"
 import {
-  Users, ShoppingBag, Activity, Bell,
+  Users, ShoppingBag, Bell,
   ClipboardList, BedDouble, CalendarClock, Wrench,
-  Building, Megaphone, Settings, PieChart as PieIcon, BarChart2,
-  TrendingUp, ArrowUpRight, Zap, Shield
+  Building, PieChart as PieIcon, BarChart2,
+  TrendingUp, ArrowUpRight, Shield, BarChart3
 } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -65,6 +67,9 @@ function Grid() {
 
 // ── Upgraded card shells ──────────────────────────────────────────────────
 
+const ChartsVisibleContext = createContext(false)
+const CHARTS_STORAGE_KEY = "campnav-admin:dashboard-show-charts"
+
 function ChartCard({
   title, icon: Icon, tag, accentColor, headline, headlineLabel, loading, children,
 }: {
@@ -77,12 +82,13 @@ function ChartCard({
   loading: boolean
   children: React.ReactNode
 }) {
+  const showCharts = useContext(ChartsVisibleContext)
   return (
     <div className="glass-card rounded-3xl overflow-hidden">
       {/* Colored accent bar */}
       <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}55)` }} />
       <div className="p-6 md:p-7">
-        <div className="flex items-start justify-between mb-5">
+        <div className={`flex items-start justify-between ${showCharts ? "mb-5" : ""}`}>
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl tile-3d">
               <Icon size={16} style={{ color: accentColor }} />
@@ -107,16 +113,18 @@ function ChartCard({
             </div>
           )}
         </div>
-        <div className="h-[230px] w-full relative">
-          {loading && (
-            <div className="absolute inset-0 z-10 flex items-end gap-2 p-2">
-              {[55, 80, 40, 65, 50].map((h, i) => (
-                <Skeleton key={i} className="flex-1 rounded-xl" style={{ height: `${h}%` }} />
-              ))}
-            </div>
-          )}
-          {children}
-        </div>
+        {showCharts && (
+          <div className="h-[230px] w-full relative">
+            {loading && (
+              <div className="absolute inset-0 z-10 flex items-end gap-2 p-2">
+                {[55, 80, 40, 65, 50].map((h, i) => (
+                  <Skeleton key={i} className="flex-1 rounded-xl" style={{ height: `${h}%` }} />
+                ))}
+              </div>
+            )}
+            {children}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -134,11 +142,12 @@ function DonutCard({
   loading: boolean
   children: React.ReactNode
 }) {
+  const showCharts = useContext(ChartsVisibleContext)
   return (
     <div className="glass-card rounded-3xl overflow-hidden">
       <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}55)` }} />
       <div className="p-6 md:p-7">
-        <div className="flex items-center justify-between mb-5">
+        <div className={`flex items-center justify-between ${showCharts ? "mb-5" : ""}`}>
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl tile-3d">
               <Icon size={16} style={{ color: accentColor }} />
@@ -159,27 +168,54 @@ function DonutCard({
             </div>
           )}
         </div>
-        <div className="h-[230px] w-full relative">
-          {loading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center">
-              <Skeleton className="h-40 w-40 rounded-full border-[18px] bg-transparent border-muted" />
-            </div>
-          )}
-          {children}
-        </div>
+        {showCharts && (
+          <div className="h-[230px] w-full relative">
+            {loading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center">
+                <Skeleton className="h-40 w-40 rounded-full border-[18px] bg-transparent border-muted" />
+              </div>
+            )}
+            {children}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function SectionHeader({ title, tag, color }: { title: string; tag: string; color: string }) {
+const DASHBOARD_TABS = [
+  { key: "overview", title: "Overview", tag: "USERS & TASKS", color: "#8b5cf6" },
+  { key: "commerce", title: "Commerce", tag: "ORDERS & REQUESTS", color: C_IN_PROGRESS },
+  { key: "operations", title: "Camp Operations", tag: "OCCUPANCY · RNR · FACILITIES · MAINTENANCE", color: C_COMPLETED },
+] as const
+
+type DashboardTab = typeof DASHBOARD_TABS[number]["key"]
+
+function DashboardTabs({ active, onChange }: { active: DashboardTab; onChange: (tab: DashboardTab) => void }) {
   return (
-    <div className="flex items-center gap-4 pb-4 border-b">
-      <div className="w-1 h-6 rounded-full" style={{ background: color }} />
-      <h3 className="text-lg font-black tracking-tight">{title}</h3>
-      <span className="text-[9px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-        {tag}
-      </span>
+    <div role="tablist" className="flex gap-2 overflow-x-auto border-b">
+      {DASHBOARD_TABS.map((tab) => {
+        const isActive = tab.key === active
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(tab.key)}
+            className={`flex items-center gap-3 px-4 py-3 -mb-px border-b-2 whitespace-nowrap transition-colors ${
+              isActive ? "text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            style={isActive ? { borderColor: tab.color } : undefined}
+          >
+            <div className="w-1 h-5 rounded-full" style={{ background: tab.color, opacity: isActive ? 1 : 0.4 }} />
+            <span className="text-sm font-black tracking-tight">{tab.title}</span>
+            <span className="hidden md:inline text-[9px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {tab.tag}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -209,8 +245,25 @@ function MetricRow({ metrics, loading }: {
 // ── Main page ─────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<DashboardTab>("overview")
+  const [showCharts, setShowCharts] = useState(true)
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(CHARTS_STORAGE_KEY) === "false") setShowCharts(false)
+    } catch {}
+  }, [])
+
+  function toggleCharts() {
+    const next = !showCharts
+    setShowCharts(next)
+    try { localStorage.setItem(CHARTS_STORAGE_KEY, String(next)) } catch {}
+  }
+
   // Overview
   const userStats = useQuery(api.users.getStats)
+  const safetyKPIs = useQuery(api.safety.getSafetyKPIs)
   const tasks = useQuery(api.tasks.list)
 
   // Commerce
@@ -300,6 +353,7 @@ export default function Home() {
   const kpiCards = [
     {
       label: 'Registered Users',
+      href: '/users',
       value: userStats?.totalUsers,
       sub: `${userStats?.onSiteCount ?? 0} on site`,
       icon: Users,
@@ -309,6 +363,7 @@ export default function Home() {
     },
     {
       label: 'Total Orders',
+      href: '/orders',
       value: orders?.length,
       sub: `${orderPending} pending`,
       icon: ShoppingBag,
@@ -317,16 +372,18 @@ export default function Home() {
       iconBg: 'rgba(59,130,246,0.1)',
     },
     {
-      label: 'Active Entries',
-      value: userStats?.activeVisitors,
-      sub: `${userStats?.onLeaveCount ?? 0} on leave`,
-      icon: Activity,
-      loading: userStats === undefined,
+      label: 'Safety Score',
+      href: '/safety',
+      value: safetyKPIs === undefined ? undefined : `${safetyKPIs?.overallSafetyScore || 0}%`,
+      sub: `${safetyKPIs?.totalIncidents ?? 0} incidents (30d)`,
+      icon: Shield,
+      loading: safetyKPIs === undefined,
       accent: '#10b981',
       iconBg: 'rgba(16,185,129,0.1)',
     },
     {
       label: 'Service Requests',
+      href: '/requests',
       value: requests?.length,
       sub: `${reqPending} pending`,
       icon: Bell,
@@ -359,9 +416,10 @@ export default function Home() {
       {/* ── KPI Cards ─────────────────────────────────────────────── */}
       <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((stat, i) => (
-          <div
+          <Link
             key={i}
-            className="glass-card card-lift rounded-3xl overflow-hidden group"
+            href={stat.href}
+            className="glass-card card-lift rounded-3xl overflow-hidden group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             {/* top accent stripe */}
             <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, ${stat.accent}, ${stat.accent}55)` }} />
@@ -386,13 +444,53 @@ export default function Home() {
                 <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{stat.sub}</p>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
       {/* ── OVERVIEW ──────────────────────────────────────────────── */}
+      <div className="flex items-end gap-3">
+        <div className="flex-1 min-w-0">
+          <DashboardTabs active={activeTab} onChange={setActiveTab} />
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showCharts}
+          onClick={toggleCharts}
+          className="mb-2 flex shrink-0 items-center gap-2 h-9 px-3 rounded-xl border bg-card text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <BarChart3 size={14} />
+          <span className="hidden sm:inline">Charts</span>
+          <span className={`relative w-7 h-4 rounded-full transition-colors ${showCharts ? "bg-primary" : "bg-muted-foreground/30"}`}>
+            <span className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${showCharts ? "translate-x-3" : ""}`} />
+          </span>
+        </button>
+      </div>
+
+      <ChartsVisibleContext.Provider value={showCharts}>
+
+      {activeTab === "overview" && (
       <section className="space-y-6">
-        <SectionHeader title="Overview" tag="USERS & TASKS" color="#8b5cf6" />
+
+        {/* Task multi-metric strip */}
+        <div className="glass-card rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
+          <div>
+            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Task Breakdown</p>
+            <MetricRow
+              loading={tasks === undefined}
+              metrics={[
+                { label: "Pending",     value: taskPending,   color: C_PENDING },
+                { label: "In Progress", value: taskProgress,  color: C_IN_PROGRESS },
+                { label: "Completed",   value: taskCompleted, color: C_COMPLETED },
+              ]}
+            />
+          </div>
+          <div className="sm:ml-auto flex items-center gap-2 text-xs text-muted-foreground font-medium">
+            <TrendingUp size={14} className="text-emerald-500" />
+            {tasks === undefined ? '—' : `${taskList.length} total tasks tracked`}
+          </div>
+        </div>
 
         {/* multi-metric strip */}
         <div className="grid gap-5 grid-cols-1 lg:grid-cols-3">
@@ -403,8 +501,8 @@ export default function Home() {
             icon={Users}
             tag="ROLE_SEGMENTATION"
             accentColor="#8b5cf6"
-            centerValue={userStats?.totalUsers ?? '—'}
-            centerLabel="Total Users"
+            centerValue={userStats ? userStats.byRole.filter((r: any) => r.value > 0).length : '—'}
+            centerLabel="Roles Filled"
             loading={userStats === undefined}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -438,12 +536,23 @@ export default function Home() {
             icon={Building}
             tag="STAFF_DEPT"
             accentColor="#6366f1"
-            headline={userStats?.byDepartment?.reduce((s: number, d: any) => s + d.value, 0) ?? '—'}
+            headline={userStats?.staffTotal ?? '—'}
             headlineLabel="Staff Total"
             loading={userStats === undefined}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={userStats?.byDepartment || []} layout="vertical" margin={{ left: 8 }}>
+              <BarChart
+                data={userStats?.byDepartment || []}
+                layout="vertical"
+                margin={{ left: 8 }}
+                style={{ cursor: 'pointer' }}
+                onClick={(state: any) => {
+                  // Clicking anywhere on a department's row opens its tasks, highlighted
+                  const rows = userStats?.byDepartment ?? []
+                  const row = rows.find((d: any) => d.name === state?.activeLabel) ?? rows[Number(state?.activeIndex)]
+                  if (row?.key) router.push(`/requests?department=${encodeURIComponent(row.key)}`)
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.922 0 0)" horizontal={false} />
                 <XAxis
                   type="number"
@@ -458,7 +567,7 @@ export default function Home() {
                   axisLine={false} tickLine={false}
                 />
                 <Tooltip contentStyle={tooltipContentStyle} cursor={barCursor} />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} fill="#6366f1" barSize={16} />
+                <Bar dataKey="value" name="Staff" radius={[0, 6, 6, 0]} fill="#6366f1" barSize={16} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -488,30 +597,28 @@ export default function Home() {
             </ResponsiveContainer>
           </ChartCard>
         </div>
+      </section>
+      )}
 
-        {/* Task multi-metric strip */}
+      {/* ── COMMERCE ──────────────────────────────────────────────── */}
+      {activeTab === "commerce" && (
+      <section className="space-y-6">
+
+        {/* Commerce multi-metric strip */}
         <div className="glass-card rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
           <div>
-            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Task Breakdown</p>
+            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Order Pipeline</p>
             <MetricRow
-              loading={tasks === undefined}
+              loading={orders === undefined}
               metrics={[
-                { label: "Pending",     value: taskPending,   color: C_PENDING },
-                { label: "In Progress", value: taskProgress,  color: C_IN_PROGRESS },
-                { label: "Completed",   value: taskCompleted, color: C_COMPLETED },
+                { label: "Pending",   value: orderPending,   color: C_PENDING },
+                { label: "Active",    value: orderProgress,  color: C_IN_PROGRESS },
+                { label: "Done",      value: orderCompleted, color: C_COMPLETED },
+                { label: "Failed",    value: orderFailed,    color: C_BAD },
               ]}
             />
           </div>
-          <div className="sm:ml-auto flex items-center gap-2 text-xs text-muted-foreground font-medium">
-            <TrendingUp size={14} className="text-emerald-500" />
-            {tasks === undefined ? '—' : `${taskList.length} total tasks tracked`}
-          </div>
         </div>
-      </section>
-
-      {/* ── COMMERCE ──────────────────────────────────────────────── */}
-      <section className="space-y-6">
-        <SectionHeader title="Commerce" tag="ORDERS & REQUESTS" color={C_IN_PROGRESS} />
 
         <div className="grid gap-5 grid-cols-1 lg:grid-cols-3">
           <ChartCard
@@ -594,27 +701,38 @@ export default function Home() {
             </ResponsiveContainer>
           </ChartCard>
         </div>
+      </section>
+      )}
 
-        {/* Commerce multi-metric strip */}
-        <div className="glass-card rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12">
-          <div>
-            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Order Pipeline</p>
+      {/* ── CAMP OPERATIONS ───────────────────────────────────────── */}
+      {activeTab === "operations" && (
+      <section className="space-y-6">
+
+        {/* Occupancy + Maintenance multi-metric strip */}
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="glass-card rounded-3xl p-6">
+            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Rooms at a Glance</p>
             <MetricRow
-              loading={orders === undefined}
+              loading={occupancyStats === undefined}
               metrics={[
-                { label: "Pending",   value: orderPending,   color: C_PENDING },
-                { label: "Active",    value: orderProgress,  color: C_IN_PROGRESS },
-                { label: "Done",      value: orderCompleted, color: C_COMPLETED },
-                { label: "Failed",    value: orderFailed,    color: C_BAD },
+                { label: "Occupied",    value: occupancyStats?.occupiedRooms ?? 0,    color: C_IN_PROGRESS },
+                { label: "Available",   value: occupancyStats?.availableRooms ?? 0,   color: C_COMPLETED },
+                { label: "Maintenance", value: occupancyStats?.maintenanceRooms ?? 0, color: C_BAD },
+              ]}
+            />
+          </div>
+          <div className="glass-card rounded-3xl p-6">
+            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Maintenance Pipeline</p>
+            <MetricRow
+              loading={maintenanceStats === undefined}
+              metrics={[
+                { label: "Pending",  value: maintenanceStats?.pendingTasks ?? 0,    color: C_PENDING },
+                { label: "Active",   value: maintenanceStats?.inProgressTasks ?? 0, color: C_IN_PROGRESS },
+                { label: "Overdue",  value: maintenanceStats?.overdueTasks ?? 0,    color: C_BAD },
               ]}
             />
           </div>
         </div>
-      </section>
-
-      {/* ── CAMP OPERATIONS ───────────────────────────────────────── */}
-      <section className="space-y-6">
-        <SectionHeader title="Camp Operations" tag="OCCUPANCY · RNR · FACILITIES · MAINTENANCE" color={C_COMPLETED} />
 
         <div className="grid gap-5 grid-cols-1 lg:grid-cols-2">
           {/* Occupancy donut */}
@@ -731,126 +849,9 @@ export default function Home() {
             </ResponsiveContainer>
           </ChartCard>
         </div>
-
-        {/* Occupancy + Maintenance multi-metric strip */}
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="glass-card rounded-3xl p-6">
-            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Rooms at a Glance</p>
-            <MetricRow
-              loading={occupancyStats === undefined}
-              metrics={[
-                { label: "Occupied",    value: occupancyStats?.occupiedRooms ?? 0,    color: C_IN_PROGRESS },
-                { label: "Available",   value: occupancyStats?.availableRooms ?? 0,   color: C_COMPLETED },
-                { label: "Maintenance", value: occupancyStats?.maintenanceRooms ?? 0, color: C_BAD },
-              ]}
-            />
-          </div>
-          <div className="glass-card rounded-3xl p-6">
-            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mb-3">Maintenance Pipeline</p>
-            <MetricRow
-              loading={maintenanceStats === undefined}
-              metrics={[
-                { label: "Pending",  value: maintenanceStats?.pendingTasks ?? 0,    color: C_PENDING },
-                { label: "Active",   value: maintenanceStats?.inProgressTasks ?? 0, color: C_IN_PROGRESS },
-                { label: "Overdue",  value: maintenanceStats?.overdueTasks ?? 0,    color: C_BAD },
-              ]}
-            />
-          </div>
-        </div>
       </section>
-
-      {/* ── Action Cards ──────────────────────────────────────────── */}
-      <div className="grid gap-5 md:grid-cols-3">
-        {[
-          {
-            icon: Megaphone,
-            title: 'Universal Alert',
-            desc: 'Broadcast a message to all currently active visitors and staff members.',
-            button: 'Open Broadcaster',
-            href: '/emergency',
-            accent: C_BAD,
-            iconBg: 'rgba(239,68,68,0.1)',
-          },
-          {
-            icon: Settings,
-            title: 'Configuration',
-            desc: 'Adjust system parameters, pricing, and operational boundaries.',
-            button: 'System Settings',
-            href: '/access-control',
-            accent: '#6366f1',
-            iconBg: 'rgba(99,102,241,0.1)',
-          },
-        ].map((item, i) => (
-          <div key={i} className="glass-card card-lift rounded-3xl overflow-hidden flex flex-col">
-            <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, ${item.accent}, ${item.accent}55)` }} />
-            <div className="p-7 flex flex-col justify-between flex-1">
-              <div>
-                <div className="w-11 h-11 rounded-2xl tile-3d flex items-center justify-center mb-5">
-                  <item.icon size={22} style={{ color: item.accent }} />
-                </div>
-                <h4 className="text-lg font-black mb-2 tracking-tight">{item.title}</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-              </div>
-              <Link
-                href={item.href}
-                className="block w-full mt-7 font-black py-3.5 rounded-xl text-[10px] uppercase tracking-widest hover:opacity-90 hover:-translate-y-px transition-all text-center text-white"
-                style={{
-                  background: `linear-gradient(180deg, ${item.accent}, color-mix(in srgb, ${item.accent} 85%, black))`,
-                  boxShadow: `inset 0 1px 0 rgb(255 255 255 / 0.2), 0 8px 18px -4px color-mix(in srgb, ${item.accent} 55%, transparent)`,
-                }}
-              >
-                {item.button}
-              </Link>
-            </div>
-          </div>
-        ))}
-
-        {/* Population card */}
-        <div
-          className="rounded-3xl overflow-hidden shadow-float flex flex-col"
-          style={{
-            background: 'linear-gradient(145deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%)',
-            boxShadow: 'inset 0 1px 0 rgb(255 255 255 / 0.2), 0 2px 3px rgb(16 24 40 / 0.06), 0 24px 48px -12px rgb(37 99 235 / 0.45)',
-          }}
-        >
-          <div className="h-[3px] w-full" style={{ background: 'linear-gradient(90deg, #93c5fd, #38bdf8, #10b981)' }} />
-          <div className="p-7 flex flex-col justify-between flex-1">
-            <div>
-              <div className="flex items-center gap-2 mb-5">
-                <div className="p-2 rounded-xl bg-white/10">
-                  <Zap size={16} className="text-white" />
-                </div>
-                <p className="text-[10px] uppercase font-black tracking-widest text-white/50">System Load</p>
-              </div>
-              <div className="text-center py-2">
-                {userStats === undefined ? (
-                  <Skeleton className="h-14 w-24 mx-auto mb-2 opacity-20" />
-                ) : (
-                  <div className="text-6xl font-black font-mono text-white mb-1 tabular-nums">
-                    {userStats?.totalUsers ?? 0}
-                  </div>
-                )}
-                <p className="text-[10px] uppercase font-black tracking-widest text-white/40">
-                  Registered Users
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2 mt-4">
-              <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-1000"
-                  style={{ width: '65%', background: 'linear-gradient(90deg, #93c5fd, #38bdf8)' }}
-                />
-              </div>
-              <div className="flex justify-between text-[9px] font-bold font-mono text-white/30">
-                <span>0%</span>
-                <span>QUOTA · 65%</span>
-                <span>100%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
+      </ChartsVisibleContext.Provider>
 
     </div>
   )

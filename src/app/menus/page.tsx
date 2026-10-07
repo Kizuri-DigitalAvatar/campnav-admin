@@ -54,6 +54,13 @@ function emptyItem(): MenuItemDraft {
 export default function MenusPage() {
     const [weekStart, setWeekStart] = useState(getCurrentWeekStart);
 
+    // Menu reminders link here with ?week=next so admins land on the week to fill in
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get("week") === "next") {
+            setWeekStart(getCurrentWeekStart() + WEEK_MS);
+        }
+    }, []);
+
     const weekMenus = useQuery(api.menus.getWeek, { weekStart });
     const allMenus = useQuery(api.menus.list, {});
     const saveWeek = useMutation(api.menus.saveWeek);
