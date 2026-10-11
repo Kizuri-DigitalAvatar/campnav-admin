@@ -32,6 +32,8 @@ export function AdminNotificationListener({ userId }: { userId?: string }) {
                     n.type === "emergency" ? "Emergency Alert" :
                     n.type === "menu_reminder" ? "Menu Reminder" :
                     n.type === "missing_room" ? "Room Needed" :
+                    n.type === "new_order" ? "🛒 New Order" :
+                    n.type === "new_request" ? "🔔 New Service Request" :
                     "Notification";
 
                 toast(title, {
