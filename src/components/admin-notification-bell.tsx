@@ -6,7 +6,7 @@ import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { api } from "@convex/_generated/api";
 import { adminNotificationHref } from "@/lib/notification-routes";
-import { AlertTriangle, Bell, Calendar, ClipboardList, Clock, Megaphone, MessageSquare } from "lucide-react";
+import { AlertTriangle, Bell, Calendar, ClipboardList, Clock, Megaphone, MessageSquare, ShoppingCart } from "lucide-react";
 
 function timeAgo(timestamp: number) {
     const diff = Date.now() - timestamp;
@@ -29,6 +29,8 @@ function typeMeta(type: string) {
         case "assignment": return { icon: ClipboardList, label: "Assignment" };
         case "room_assignment": return { icon: ClipboardList, label: "Room Assignment" };
         case "missing_room": return { icon: AlertTriangle, label: "Room Needed" };
+        case "new_order": return { icon: ShoppingCart, label: "New Order" };
+        case "new_request": return { icon: ClipboardList, label: "New Request" };
         case "announcement": return { icon: Megaphone, label: "Announcement" };
         case "activity": return { icon: Calendar, label: "Event" };
         default: return { icon: Bell, label: "Notification" };

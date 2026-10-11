@@ -4,10 +4,11 @@ export function adminNotificationHref(n: { type: string; message?: string; reque
     if (n.type === "room_assignment") return "/room-management"
     if (n.type === "missing_room") return "/users?filter=no-room"
     if (n.type === "preventive") return "/maintenance/preventive"
+    if (n.type === "new_order") return "/orders"
     // Older menu reminders were sent with the generic "reminder" type
     if (n.type === "menu_reminder" || (n.type === "reminder" && n.message?.includes("weekly meal menu"))) {
         return "/menus?week=next"
     }
-    if (n.type === "admin_alert" && n.requestId) return `/requests/${n.requestId}`
+    if ((n.type === "admin_alert" || n.type === "new_request") && n.requestId) return `/requests/${n.requestId}`
     return "/requests"
 }
