@@ -11,6 +11,7 @@ import { CampnavLogo } from "@/components/campnav-logo";
 import { AdminSessionContext } from "@/components/admin-session";
 import {
     LayoutDashboard,
+    PhoneCall,
     Users,
     ShoppingCart,
     Megaphone,
@@ -77,6 +78,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
             { name: 'Access Control', href: '/access-control', icon: ShieldCheck },
             { name: 'RnR / Leave', href: '/rnr', icon: CalendarClock },
             { name: 'Login Logs', href: '/login-logs', icon: ActivitySquare },
+            { name: 'Reception & Contact', href: '/settings', icon: PhoneCall },
         ],
     },
     {
