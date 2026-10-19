@@ -5,6 +5,7 @@ import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "@convex/_generated/api"
 import { Search, Filter, Trash2, ShoppingBag, CheckCircle2, AlertTriangle, Plus } from "lucide-react"
+import { EmptyArt } from "@/components/visuals"
 import { NewOrderDialog } from "@/components/new-order-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -229,8 +230,8 @@ export default function OrdersPage() {
 
         {orders !== undefined && filteredOrders.length === 0 && (
           <div className="p-16 text-center text-muted-foreground/30">
-            <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <p className="text-sm font-medium">No orders found matching your criteria.</p>
+            <EmptyArt kind="shop" size={96} className="mb-4" />
+            <p className="text-sm font-medium text-muted-foreground">No orders found matching your criteria.</p>
           </div>
         )}
       </div>

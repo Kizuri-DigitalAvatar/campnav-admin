@@ -17,7 +17,6 @@ import {
     Trash2,
     Eye,
     Bell,
-    AlertCircle,
     MoreHorizontal,
     ClipboardCheck,
     Calendar,
@@ -28,6 +27,7 @@ import {
 } from "lucide-react"
 import { CreateRequestDialog } from "@/components/create-request-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyArt, RequestJourney, ServiceArt, artForType } from "@/components/visuals"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -341,7 +341,11 @@ function RequestsPageContent() {
                                     <td className="p-6">
                                         <div className="space-y-1.5">
                                             <div className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest text-primary/80">
-                                                {getIcon(req.type)}
+                                                <ServiceArt
+                                                    kind={artForType(req.type)}
+                                                    size={30}
+                                                    motion={req.status === "in_progress" ? "always" : "none"}
+                                                />
                                                 <span>{req.type.replace("_", " ")}</span>
                                             </div>
                                             {req.category && (
@@ -421,7 +425,7 @@ function RequestsPageContent() {
 
                 {requests !== undefined && requestList.length === 0 && (
                     <div className="p-24 text-center bg-muted/10 border-t-2 border-dashed">
-                        <AlertCircle className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                        <EmptyArt kind="requests" size={96} className="mb-4" />
                         <p className="text-muted-foreground font-black uppercase tracking-widest text-xs italic">No active requests found</p>
                     </div>
                 )}
@@ -477,6 +481,22 @@ function RequestsPageContent() {
 
                             {/* Scrollable body */}
                             <div className="flex-1 overflow-y-auto bg-background">
+                            {/* Same picture journey the resident sees on their tracker */}
+                            <div className="px-6 md:px-8 pt-6">
+                                <RequestJourney
+                                    status={selectedRequest.status}
+                                    type={selectedRequest.type}
+                                    staffName={requestTask?.staff?.name}
+                                    showHeadline={false}
+                                    times={{
+                                        sent: selectedRequest.createdAt,
+                                        accepted: requestTask?.acknowledgedAt,
+                                        started: requestTask?.startedAt,
+                                        done: requestTask?.completedAt,
+                                    }}
+                                    className="rounded-2xl border bg-card p-4 md:p-5"
+                                />
+                            </div>
                             <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-6">
                                     <section className="space-y-3">

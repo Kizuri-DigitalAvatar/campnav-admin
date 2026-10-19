@@ -16,6 +16,7 @@ import {
 } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@convex/_generated/api"
+import { CountUp, LivePulse, RingGauge } from "@/components/visuals"
 
 // Donut / pie segment colors
 const COLORS = ['#2b6ff0', '#38bdf8', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1']
@@ -374,7 +375,9 @@ export default function Home() {
     {
       label: 'Safety Score',
       href: '/safety',
-      value: safetyKPIs === undefined ? undefined : `${safetyKPIs?.overallSafetyScore || 0}%`,
+      value: safetyKPIs === undefined ? undefined : safetyKPIs?.overallSafetyScore || 0,
+      suffix: '%',
+      gauge: true,
       sub: `${safetyKPIs?.totalIncidents ?? 0} incidents (30d)`,
       icon: Shield,
       loading: safetyKPIs === undefined,
@@ -408,7 +411,7 @@ export default function Home() {
           </h2>
         </div>
         <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-muted-foreground tile-3d px-3.5 py-2 rounded-full">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_oklch(0.696_0.17_162.48)]" />
+          <LivePulse size={14} />
           LIVE
         </div>
       </header>
@@ -434,14 +437,26 @@ export default function Home() {
                 <p className="text-[10px] uppercase font-black tracking-wider text-muted-foreground mb-1">
                   {stat.label}
                 </p>
-                {stat.loading ? (
-                  <Skeleton className="h-8 w-20 mb-1" />
-                ) : (
-                  <p className="text-3xl font-black font-mono tabular-nums text-foreground">
-                    {stat.value ?? 0}
-                  </p>
-                )}
-                <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{stat.sub}</p>
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    {stat.loading ? (
+                      <Skeleton className="h-8 w-20 mb-1" />
+                    ) : (
+                      <p className="text-3xl font-black font-mono tabular-nums text-foreground">
+                        <CountUp value={Number(stat.value ?? 0)} suffix={stat.suffix} />
+                      </p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{stat.sub}</p>
+                  </div>
+                  {stat.gauge && (
+                    <RingGauge
+                      value={stat.loading ? undefined : Number(stat.value ?? 0)}
+                      color={stat.accent}
+                      size={46}
+                      className="shrink-0"
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </Link>
