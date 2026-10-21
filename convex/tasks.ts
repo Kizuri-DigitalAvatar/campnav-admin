@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 // Full task view for a request: assigned staff, stage timestamps, updates, feedback
 export const getByRequest = query({
@@ -139,7 +139,7 @@ export const assignStaffToRequest = mutation({
         }
 
         // Trigger email processing immediately
-        await ctx.scheduler.runAfter(0, api.notifications.processEmailNotifications, {});
+        await ctx.scheduler.runAfter(0, internal.email.processEmailNotifications, {});
     },
 });
 

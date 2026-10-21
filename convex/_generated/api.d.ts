@@ -17,6 +17,7 @@ import type * as crons from "../crons.js";
 import type * as demoEmail from "../demoEmail.js";
 import type * as demoRequests from "../demoRequests.js";
 import type * as email from "../email.js";
+import type * as emailConfig from "../emailConfig.js";
 import type * as emergencyBroadcasts from "../emergencyBroadcasts.js";
 import type * as facilities from "../facilities.js";
 import type * as files from "../files.js";
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   demoEmail: typeof demoEmail;
   demoRequests: typeof demoRequests;
   email: typeof email;
+  emailConfig: typeof emailConfig;
   emergencyBroadcasts: typeof emergencyBroadcasts;
   facilities: typeof facilities;
   files: typeof files;

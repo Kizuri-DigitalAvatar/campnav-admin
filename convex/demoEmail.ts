@@ -4,8 +4,8 @@ import { internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Resend } from "resend";
+import { EMAIL_FROM as FROM } from "./emailConfig";
 
-const FROM = "CAMPNAV <notifications@blankspacesl.com>";
 const SALES_INBOX = process.env.SALES_INBOX || "hello@zurimining.com";
 
 const row = (label: string, value?: string) =>

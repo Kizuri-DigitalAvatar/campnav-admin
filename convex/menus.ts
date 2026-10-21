@@ -1,6 +1,6 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 export const list = query({
     args: { category: v.optional(v.string()) },
@@ -113,7 +113,7 @@ export const sendWeeklyMenuReminders = internalMutation({
         }
 
         // Deliver emails right away
-        await ctx.scheduler.runAfter(0, api.notifications.processEmailNotifications, {});
+        await ctx.scheduler.runAfter(0, internal.email.processEmailNotifications, {});
     },
 });
 

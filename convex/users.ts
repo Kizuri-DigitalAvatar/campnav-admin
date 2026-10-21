@@ -2,7 +2,7 @@ import { query, mutation, internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { recordOccupancySnapshot } from "./rooms";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
 
@@ -24,6 +24,7 @@ export const upsert = mutation({
     isOnSite: v.optional(v.boolean()),
     campStaffId: v.optional(v.string()),
     roomNumber: v.optional(v.string()),
+    createOnly: v.optional(v.boolean()), // admin "Add user": refuse an email that's already registered
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -31,9 +32,20 @@ export const upsert = mutation({
       .filter((q) => q.eq(q.field("email"), args.email))
       .first();
 
+    if (args.createOnly && existing) {
+      throw new ConvexError(`${args.email} is already registered to ${existing.name}. Edit that user from the list instead.`);
+    }
+
     const roomNumber = args.roomNumber?.trim() || undefined;
     if (roleNeedsRoom(args.role) && !roomNumber) {
       throw new Error("A room must be assigned to residents and staff");
+    }
+    // Users only get a first room here; moving someone happens in Room Management
+    if (existing?.roomNumber && roomNumber !== existing.roomNumber) {
+      throw new ConvexError(`${existing.name} is already in Room ${existing.roomNumber}. Reassign rooms from Room Management.`);
+    }
+    if (roomNumber && roomNumber !== existing?.roomNumber) {
+      await assertRoomFree(ctx, roomNumber, existing?._id);
     }
 
     const updateData: any = {
@@ -63,6 +75,10 @@ export const upsert = mutation({
       if (roomNumber && roomNumber !== existing.roomNumber) {
         await notifyRoomAssigned(ctx, existing._id, roomNumber, existing.roomNumber);
       }
+      // An admin set a new password: send the user their updated login details
+      if (args.password && args.password !== existing.password) {
+        await sendCredentialsEmail(ctx, existing._id, "password_changed", args.name, args.email, args.password);
+      }
       return (await ctx.db.get(existing._id))!;
     }
 
@@ -76,16 +92,7 @@ export const upsert = mutation({
 
     // If it's a new user and we have a password, send credentials
     if (args.password) {
-      await ctx.db.insert("notifications", {
-        userId: _id,
-        type: "account_created",
-        channel: "email",
-        status: "pending",
-        message: `Welcome to CAMPNAV, ${args.name}!\n\nYour account has been created. Here are your login credentials:\n\nEmail: ${args.email}\nPassword: ${args.password}\n\nPlease log in and change your password as soon as possible.`,
-      });
-
-      // Trigger email processing immediately
-      await ctx.scheduler.runAfter(0, internal.email.processEmailNotifications, {});
+      await sendCredentialsEmail(ctx, _id, "account_created", args.name, args.email, args.password);
     }
 
     return (await ctx.db.get(_id))!;
@@ -616,6 +623,38 @@ async function notifyRoomAssigned(ctx: MutationCtx, userId: Id<"users">, roomNum
   if (prefs.email && user.email) await ctx.db.insert("notifications", { ...base, channel: "email" });
   if (prefs.sms && user.phoneNumber) await ctx.db.insert("notifications", { ...base, channel: "sms" });
   await ctx.scheduler.runAfter(0, internal.email.processEmailNotifications, {});
+}
+
+// Email a user their login details when an admin creates the account or sets a new password
+async function sendCredentialsEmail(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  type: "account_created" | "password_changed",
+  name: string,
+  email: string,
+  password: string,
+) {
+  const message = type === "account_created"
+    ? `Welcome to CAMPNAV, ${name}!\n\nYour account has been created. Here are your login credentials:\n\nEmail: ${email}\nPassword: ${password}\n\nPlease log in and change your password as soon as possible.`
+    : `Hi ${name},\n\nAn administrator has changed your CAMPNAV password. Here are your updated login credentials:\n\nEmail: ${email}\nPassword: ${password}\n\nIf you did not expect this change, contact your camp administrator.`;
+  await ctx.db.insert("notifications", { userId, type, channel: "email", status: "pending", message });
+  await ctx.scheduler.runAfter(0, internal.email.processEmailNotifications, {});
+}
+
+// Reject a room that is already occupied by someone other than this user
+async function assertRoomFree(ctx: MutationCtx, roomNumber: string, userId?: Id<"users">) {
+  const rooms = await ctx.db.query("rooms").collect();
+  const room = rooms.find((r) => r.roomNumber === roomNumber);
+  if (room?.occupantId && room.occupantId !== userId) {
+    const occupant = await ctx.db.get(room.occupantId);
+    throw new ConvexError(`Room ${roomNumber} is already occupied${occupant ? ` by ${occupant.name}` : ""}`);
+  }
+  // Also catch users holding the room number without being the room's occupant
+  const users = await ctx.db.query("users").collect();
+  const holder = users.find((u) => u.roomNumber === roomNumber && u._id !== userId);
+  if (holder) {
+    throw new ConvexError(`Room ${roomNumber} is already occupied by ${holder.name}`);
+  }
 }
 
 // Mirror a user's room onto the rooms table so occupancy stays accurate

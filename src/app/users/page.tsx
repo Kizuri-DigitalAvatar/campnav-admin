@@ -1,7 +1,9 @@
 "use client"
 
 import { FormEvent, useEffect, useState } from "react"
+import Link from "next/link"
 import { useMutation } from "convex/react"
+import { ConvexError } from "convex/values"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "@convex/_generated/api"
 
@@ -107,6 +109,8 @@ export default function UsersPage() {
   const [isOnSite, setIsOnSite] = useState(false)
   const [campStaffId, setCampStaffId] = useState("")
   const [roomNumber, setRoomNumber] = useState("")
+  const [savedRoomNumber, setSavedRoomNumber] = useState("") // room the edited user already holds
+  const [formError, setFormError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -133,8 +137,9 @@ export default function UsersPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!name.trim() || !email.trim()) return
+    setFormError(null)
     if (roomRequired && !roomNumber) {
-      alert("Please assign a room. Residents and staff must have a room.")
+      setFormError("Please assign a room. Residents and staff must have a room.")
       return
     }
 
@@ -173,17 +178,24 @@ export default function UsersPage() {
         isOnSite: role === 'staff' || role === "camp_supervisor" ? isOnSite : undefined,
         campStaffId: role === 'staff' ? campStaffId.trim() : undefined,
         roomNumber: roomNumber || undefined,
+        createOnly: !editingId,
       })
       resetForm()
     } catch (err) {
-      console.error("Failed to upsert user:", err)
-      alert("Error saving user. Check console.")
+      // Expected validation errors (ConvexError) are shown in the form, not logged
+      if (err instanceof ConvexError) {
+        setFormError(String(err.data))
+      } else {
+        console.error("Failed to upsert user:", err)
+        setFormError("Error saving user. Please try again.")
+      }
     } finally {
       setIsUploading(false)
     }
   }
 
   function resetForm() {
+    setFormError(null)
     setName("")
     setEmail("")
     setPassword("")
@@ -198,6 +210,7 @@ export default function UsersPage() {
     setIsOnSite(false)
     setCampStaffId("")
     setRoomNumber("")
+    setSavedRoomNumber("")
     setEditingId(null)
     setIsFormOpen(false)
   }
@@ -222,6 +235,7 @@ export default function UsersPage() {
     setIsOnSite(user.isOnSite || false)
     setCampStaffId(user.campStaffId || "")
     setRoomNumber(user.roomNumber || "")
+    setSavedRoomNumber(user.roomNumber || "")
     setEditingId(user._id)
     setIsFormOpen(true)
   }
@@ -342,30 +356,39 @@ export default function UsersPage() {
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
                 Room {roomRequired ? <span className="text-destructive">*</span> : <span className="normal-case font-medium">(optional)</span>}
               </label>
-              <select
-                className={`w-full h-11 rounded-xl border bg-muted/50 px-4 text-sm focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all outline-none ${roomRequired && !roomNumber ? "border-destructive/50" : ""}`}
-                value={roomNumber}
-                onChange={(e) => setRoomNumber(e.target.value)}
-              >
-                <option value="">{rooms === undefined ? "Loading rooms..." : "Select a room"}</option>
-                {/* Keep a saved room selectable even if it no longer exists in Rooms */}
-                {roomNumber && rooms && !rooms.some((r: any) => r.roomNumber === roomNumber) && (
-                  <option value={roomNumber}>{roomNumber} (not in room list)</option>
-                )}
-                {[...(rooms ?? [])]
-                  .sort((a: any, b: any) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }))
-                  .map((r: any) => {
-                    const takenBySomeoneElse = r.occupantId && r.occupantId !== editingId
-                    return (
-                      <option key={r._id} value={r.roomNumber}>
-                        {r.roomNumber}
-                        {r.category ? ` · ${r.category}` : ""}
-                        {takenBySomeoneElse ? ` — occupied by ${r.occupantName}` : r.status === "maintenance" ? " — maintenance" : " — available"}
-                      </option>
-                    )
-                  })}
-              </select>
-              {rooms !== undefined && rooms.length === 0 && (
+              {savedRoomNumber ? (
+                // Users already in a room are moved from Room Management, not here
+                <>
+                  <div className="w-full h-11 rounded-xl border bg-muted/30 px-4 text-sm flex items-center gap-2 text-muted-foreground">
+                    <BedDouble className="w-4 h-4" /> Room {savedRoomNumber}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground ml-1">
+                    To move this user, use <Link href="/room-management" className="underline font-bold">Room Management</Link>.
+                  </p>
+                </>
+              ) : (
+                <select
+                  className={`w-full h-11 rounded-xl border bg-muted/50 px-4 text-sm focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all outline-none ${roomRequired && !roomNumber ? "border-destructive/50" : ""}`}
+                  value={roomNumber}
+                  onChange={(e) => setRoomNumber(e.target.value)}
+                >
+                  <option value="">{rooms === undefined ? "Loading rooms..." : "Select a room"}</option>
+                  {[...(rooms ?? [])]
+                    .sort((a: any, b: any) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }))
+                    .map((r: any) => {
+                      // Occupied rooms can't be picked
+                      const takenBySomeoneElse = r.occupantId && r.occupantId !== editingId
+                      return (
+                        <option key={r._id} value={r.roomNumber} disabled={takenBySomeoneElse}>
+                          {r.roomNumber}
+                          {r.category ? ` · ${r.category}` : ""}
+                          {takenBySomeoneElse ? ` — occupied by ${r.occupantName}` : r.status === "maintenance" ? " — maintenance" : " — available"}
+                        </option>
+                      )
+                    })}
+                </select>
+              )}
+              {!savedRoomNumber && rooms !== undefined && rooms.length === 0 && (
                 <p className="text-[10px] text-muted-foreground ml-1">No rooms yet. Add rooms under Room Management first.</p>
               )}
             </div>
@@ -531,6 +554,13 @@ export default function UsersPage() {
               </>
             )}
           </div>
+
+          {formError && (
+            <div role="alert" className="lg:col-span-3 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
 
           <div className="lg:col-span-3 flex gap-3 pt-6 border-t font-bold">
             <button

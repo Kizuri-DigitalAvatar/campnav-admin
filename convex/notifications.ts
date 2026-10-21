@@ -453,6 +453,7 @@ export const getPendingNotifications = query({
                     ...n,
                     userEmail: userData?.email,
                     userPhone: userData?.phoneNumber,
+                    userRole: userData?.role,
                 };
             })
         );
@@ -474,68 +475,42 @@ export const updateNotificationStatus = internalMutation({
     },
 });
 
-// Action to process email notifications via Resend
+// Kept for existing callers; all email goes through email.processEmailNotifications
 export const processEmailNotifications = action({
     args: {},
     handler: async (ctx) => {
-        const resendApiKey = process.env.RESEND_API_KEY;
-        if (!resendApiKey) {
-            console.error("RESEND_API_KEY not found in environment variables");
-            return;
-        }
+        await ctx.runAction(internal.email.processEmailNotifications, {});
+    },
+});
 
-        const pending = await ctx.runQuery(api.notifications.getPendingNotifications);
-        const emailNotifications = pending.filter((n: any) => n.channel === "email" && n.userEmail);
+// Mark an email as being sent so overlapping sender runs don't send it twice
+export const claimEmailNotification = internalMutation({
+    args: { id: v.id("notifications") },
+    handler: async (ctx, args) => {
+        const notif = await ctx.db.get(args.id);
+        if (!notif || notif.status !== "pending") return false;
+        await ctx.db.patch(args.id, { status: "sending" });
+        return true;
+    },
+});
 
-        console.log(`Processing ${emailNotifications.length} email notifications`);
-
-        for (const notif of emailNotifications) {
-            try {
-                const response = await fetch("https://api.resend.com/emails", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${resendApiKey}`,
-                    },
-                    body: JSON.stringify({
-                        from: "CAMPNAV <edward.kamara@kizuri-international.com>", // Use testing domain until campnav.com is verified
-                        to: [notif.userEmail],
-                        subject: `CAMPNAV: New Camp Service Request`,
-                        html: `
-                            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                                <h1 style="color: #000;">New Camp Service Request</h1>
-                                <p>${notif.message}</p>
-                                <hr />
-                                <p style="font-size: 12px; color: #666;">This is an automated notification from CAMPNAV.</p>
-                                <p style="font-size: 10px; color: #999;">Sent via Resend Test Domain</p>
-                            </div>
-                        `,
-                    }),
-                });
-
-                if (response.ok) {
-                    await ctx.runMutation(internal.notifications.updateNotificationStatus, {
-                        id: notif._id,
-                        status: "sent",
-                    });
-                } else {
-                    const errorData = await response.json();
-                    console.error("Failed to send email:", errorData);
-                    await ctx.runMutation(internal.notifications.updateNotificationStatus, {
-                        id: notif._id,
-                        status: "failed",
-                    });
-                }
-            } catch (error) {
-                console.error("Error processing email notification:", error);
-                await ctx.runMutation(internal.notifications.updateNotificationStatus, {
-                    id: notif._id,
-                    status: "failed",
-                });
+// Drop queued emails created before a cutoff, e.g. a backlog built up while
+// sending was switched off. npx convex run notifications:expirePendingEmails
+export const expirePendingEmails = internalMutation({
+    args: { before: v.optional(v.number()) },
+    handler: async (ctx, args) => {
+        const before = args.before ?? Date.now();
+        const pending = await ctx.db
+            .query("notifications")
+            .withIndex("by_status", (q) => q.eq("status", "pending"))
+            .collect();
+        let expired = 0;
+        for (const n of pending) {
+            if (n.channel === "email" && n._creationTime < before) {
+                await ctx.db.patch(n._id, { status: "failed" });
+                expired++;
             }
-
-            // Add a small delay to respect Resend rate limits (2 req/sec free tier)
-            await new Promise(resolve => setTimeout(resolve, 600));
         }
+        return expired;
     },
 });

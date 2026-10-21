@@ -3,6 +3,22 @@
 import { internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Resend } from "resend";
+import { EMAIL_FROM, EMAIL_MAX_AGE_MS, appUrlForRole, escapeHtml, isDeliverable } from "./emailConfig";
+
+// Subject, heading and button text per notification type
+function emailCopy(type: string) {
+    switch (type) {
+        case "welcome":
+        case "account_created":
+            return { subject: "Welcome to CAMPNAV: Your Login Details", title: "Welcome to CAMPNAV", button: "Log in to CAMPNAV" };
+        case "password_changed":
+            return { subject: "CAMPNAV: Your Password Has Been Changed", title: "Your Password Has Been Changed", button: "Log in to CAMPNAV" };
+        case "assignment":
+            return { subject: "CAMPNAV: New Service Request", title: "New Service Request", button: "Go to Dashboard" };
+        default:
+            return { subject: "CAMPNAV: New Notification", title: "New Notification", button: "Go to Dashboard" };
+    }
+}
 
 // Internal action to process email notifications via Resend
 export const processEmailNotifications = internalAction({
@@ -13,23 +29,36 @@ export const processEmailNotifications = internalAction({
             console.error("[processEmailNotifications] RESEND_API_KEY not found in environment variables");
             return;
         }
-        console.log("[processEmailNotifications] RESEND_API_KEY is present");
-
         const resend = new Resend(resendApiKey);
 
         const pending = await ctx.runQuery(api.notifications.getPendingNotifications);
-        console.log(`[processEmailNotifications] getPendingNotifications returned ${pending.length} items`);
-
-        const emailNotifications = pending.filter((n: any) => {
-            const isEmail = n.channel === "email";
-            const hasEmail = !!n.userEmail;
-            if (isEmail && !hasEmail) console.log(`[processEmailNotifications] Notification ${n._id} matches email channel but has no userEmail`);
-            return isEmail && hasEmail;
-        });
-
-        console.log(`[processEmailNotifications] Filtered to ${emailNotifications.length} email notifications to send`);
+        const emailNotifications = pending.filter((n: any) => n.channel === "email");
+        if (emailNotifications.length > 0) {
+            console.log(`[processEmailNotifications] ${emailNotifications.length} email notifications to send`);
+        }
 
         for (const notif of emailNotifications) {
+            // Settle mail that can't or shouldn't go out, so it doesn't sit in the queue
+            const skipReason = !notif.userEmail
+                ? "User has no email address"
+                : !isDeliverable(notif.userEmail)
+                    ? `Undeliverable test address: ${notif.userEmail}`
+                    : Date.now() - notif._creationTime > EMAIL_MAX_AGE_MS
+                        ? "Expired before it could be sent"
+                        : null;
+            if (skipReason) {
+                await ctx.runMutation(internal.notifications.updateNotificationStatus, {
+                    id: notif._id,
+                    status: "failed",
+                    error: skipReason,
+                });
+                continue;
+            }
+
+            // Runs can overlap (cron + triggers); only the run that claims it sends
+            const claimed = await ctx.runMutation(internal.notifications.claimEmailNotification, { id: notif._id });
+            if (!claimed) continue;
+
             console.log(`Sending email notification to: ${notif.userEmail}`);
             try {
                 // Fetch request details if available to enrich the email
@@ -40,27 +69,20 @@ export const processEmailNotifications = internalAction({
                         requestInfo = `
                             <div style="background-color: #f9fafb; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid #e5e7eb;">
                                 <p style="margin: 0; font-size: 14px; color: #6b7280; text-transform: uppercase; font-weight: 600;">Request Details</p>
-                                <p style="margin: 8px 0 0 0; font-size: 16px; font-weight: 500;">Room: ${request.roomNumber}</p>
-                                <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 500;">Type: ${request.type.charAt(0).toUpperCase() + request.type.slice(1)}</p>
-                                <p style="margin: 12px 0 0 0; font-size: 14px; color: #374151; font-style: italic;">"${request.description}"</p>
+                                <p style="margin: 8px 0 0 0; font-size: 16px; font-weight: 500;">Room: ${escapeHtml(request.roomNumber)}</p>
+                                <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 500;">Type: ${escapeHtml(request.type.charAt(0).toUpperCase() + request.type.slice(1))}</p>
+                                <p style="margin: 12px 0 0 0; font-size: 14px; color: #374151; font-style: italic;">"${escapeHtml(request.description)}"</p>
                             </div>
                         `;
                     }
                 }
 
-                const subject = notif.type === 'welcome'
-                    ? "Welcome to CAMPNAV: Your Account Details"
-                    : `CAMPNAV: New ${notif.type === 'assignment' ? 'Service Request' : 'Notification'}`;
-
-                const title = notif.type === 'welcome'
-                    ? "Welcome to CAMPNAV"
-                    : (notif.type === 'assignment' ? "New Service Request" : "New Notification");
-
-                const formattedMessage = notif.message.replace(/\n/g, '<br/>');
+                const { subject, title, button } = emailCopy(notif.type);
+                const formattedMessage = escapeHtml(notif.message).replace(/\n/g, '<br/>');
 
                 const { data, error } = await resend.emails.send({
-                    from: "CAMPNAV <notifications@blankspacesl.com>",
-                    to: [notif.userEmail],
+                    from: EMAIL_FROM,
+                    to: [notif.userEmail!],
                     subject: subject,
                     html: `
                         <!DOCTYPE html>
@@ -88,7 +110,7 @@ export const processEmailNotifications = internalAction({
                                 ${requestInfo}
 
                                 <div style="margin-top: 32px;">
-                                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.zurimining.com/campnav'}" class="button">Go to Dashboard</a>
+                                    <a href="${appUrlForRole(notif.userRole)}" class="button">${button}</a>
                                 </div>
 
                                 <div class="footer">
